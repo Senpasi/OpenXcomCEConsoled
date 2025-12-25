@@ -1,6 +1,7 @@
 #include "EventsList.h"
 #include "../Engine/Logger.h"
 #include "../Engine/Yaml.h"
+#include <unordered_set>
 namespace OpenXcom
 {
 
@@ -46,29 +47,24 @@ std::string EventsList::processEvent(const std::string& yamlString)
 		return message;
 	}
 
+	std::unordered_set<std::string> counterEvents = {
+		"geoscape_event",
+		"ufo_and_bases_detect_all",
+		"ask_info",
+		"force_bug_hunt"
+	};
+
 	if (eventId == "increased_damage_5min")
     {
         auto status = std::make_unique<TimeBasedStatus>(300.f);
         status->setData(fullEventYaml);
         statusManager->addStatus("increased_damage", std::move(status));
-    }
-	else if (eventId == "geoscape_event")
+	}
+	else if (counterEvents.find(eventId) != counterEvents.end())
 	{
 		auto status = std::make_unique<CounterBasedStatus>(1);
 		status->setData(fullEventYaml);
-		statusManager->addStatus("geoscape_event", std::move(status));
-	}
-    else if (eventId == "ufo_and_bases_detect_all")
-    {
-        auto status = std::make_unique<CounterBasedStatus>(1);
-        status->setData(fullEventYaml);
-        statusManager->addStatus("ufo_and_bases_detect_all", std::move(status));
-	}
-	else if (eventId == "ask_info")
-	{
-		auto status = std::make_unique<CounterBasedStatus>(1);
-		status->setData(fullEventYaml);
-		statusManager->addStatus("ask_info", std::move(status));
+		statusManager->addStatus(eventId, std::move(status));
 	}
 	else
 	{

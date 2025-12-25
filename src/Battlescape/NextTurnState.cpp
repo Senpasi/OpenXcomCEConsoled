@@ -362,11 +362,19 @@ void NextTurnState::init()
 */
 void NextTurnState::checkBugHuntMode()
 {
+	// bug hunt is already activated
+	if (_battleGame->getBughuntMode())
+		return;
+
+	StatusManager* statusManager = StatusManager::getInstance();
+	if (statusManager->hasStatus("force_bug_hunt"))
+	{
+		statusManager->removeStatus("force_bug_hunt");
+		_battleGame->setBughuntMode(true);
+	}
+
 	// too early for bug hunt
 	if (_currentTurn < _battleGame->getBughuntMinTurn()) return;
-
-	// bug hunt is already activated
-	if (_battleGame->getBughuntMode()) return;
 
 	int count = 0;
 	for (const auto* bu : *_battleGame->getUnits())
