@@ -1,0 +1,22 @@
+type: streamer_wave
+minDifficulty: 0
+maxDifficulty: 4
+useSpawnNodes: true
+spawnNodeRanks: [ 0, 1 ]
+briefing:
+  title: STR_STREAMER_ALIEN_REINFORCEMENTS_TITLE
+  desc: "В зоне проведения операции замечен противник с бластерной установкой!"
+data:
+  - alienRank: 5
+    lowQty: 1
+    medQty: 1
+    highQty: 1
+    dQty: 0
+    extraQty: 0
+    itemSets:
+          -
+            - STR_BLASTER_LAUNCHER
+            - STR_BLASTER_BOMB
+            - STR_BLASTER_BOMB
+            - STR_BLASTER_BOMB
+            - STR_BLASTER_BOMB

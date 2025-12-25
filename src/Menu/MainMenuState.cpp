@@ -127,6 +127,12 @@ MainMenuState::MainMenuState(bool updateCheck)
 #ifdef _WIN32
 	//_debugInVisualStudio = true; // uncomment when debugging in Visual Studio (working dir and exe dir are not the same)
 
+	if (Options::oxceUpdateCheck)
+	{
+		Log(LOG_INFO) << "Automatic update is disabled by streamer console. It dosnt work in standart oxce.";
+		updateCheck = false;
+	}
+
 	// delete (old) update batch file
 	if (updateCheck && CrossPlatform::fileExists("oxce-upd.bat"))
 	{

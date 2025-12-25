@@ -718,6 +718,10 @@
     <ClCompile Include="Savegame\Vehicle.cpp" />
     <ClCompile Include="Savegame\Waypoint.cpp" />
     <ClCompile Include="Savegame\WeightedOptions.cpp" />
+    <ClCompile Include="StreamerConsole\EventsList.cpp" />
+    <ClCompile Include="StreamerConsole\NotificationMessage.cpp" />
+    <ClCompile Include="StreamerConsole\StatusManager.cpp" />
+    <ClCompile Include="StreamerConsole\StreamerConsoleConnector.cpp" />
     <ClCompile Include="Ufopaedia\ArticleState.cpp" />
     <ClCompile Include="Ufopaedia\ArticleStateArmor.cpp" />
     <ClCompile Include="Ufopaedia\ArticleStateBaseFacility.cpp" />
@@ -1214,6 +1218,10 @@
     <ClInclude Include="Savegame\Vehicle.h" />
     <ClInclude Include="Savegame\Waypoint.h" />
     <ClInclude Include="Savegame\WeightedOptions.h" />
+    <ClInclude Include="StreamerConsole\EventsList.h" />
+    <ClInclude Include="StreamerConsole\NotificationMessage.h" />
+    <ClInclude Include="StreamerConsole\StatusManager.h" />
+    <ClInclude Include="StreamerConsole\StreamerConsoleConnector.h" />
     <ClInclude Include="Ufopaedia\ArticleState.h" />
     <ClInclude Include="Ufopaedia\ArticleStateArmor.h" />
     <ClInclude Include="Ufopaedia\ArticleStateBaseFacility.h" />

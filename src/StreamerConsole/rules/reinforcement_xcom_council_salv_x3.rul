@@ -1,0 +1,38 @@
+type: streamer_wave
+minDifficulty: 0
+maxDifficulty: 4
+useSpawnNodes: true
+spawnNodeRanks: [ 0, 1 ]
+briefing:
+  title: STR_STREAMER_XCOM_REINFORCEMENTS_TITLE
+  desc: "Небольшой группе спасателей совета удалось попасть в зону операции"
+data:
+  - alienRank: 16
+    customUnitType: STR_COUNCIL_SALVAGER
+    lowQty: 3
+    medQty: 3
+    highQty: 3
+    dQty: 0
+    extraQty: 0
+    percentageOutsideUfo: 2 # 0 - противник, 1 - гражданские, 2 - xcom
+    itemSets:
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []

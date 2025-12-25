@@ -1,0 +1,56 @@
+type: streamer_wave
+minDifficulty: 0
+maxDifficulty: 4
+useSpawnNodes: true
+spawnNodeRanks: [ 0, 1 ]
+briefing:
+  title: STR_STREAMER_XCOM_REINFORCEMENTS_TITLE
+  desc: "За небольшую взятку от одного из данатеров смотритель пришельцев направил к вам одного из своих мутонов."
+data:
+  - alienRank: 0
+    customUnitType: STR_MUTON_SOLDIER
+    lowQty: 1
+    medQty: 1
+    highQty: 1
+    dQty: 0
+    extraQty: 0
+    percentageOutsideUfo: 2
+    itemSets:
+      - - STR_COLT_COMMANDO
+        - STR_RIFLE_M16_CLIP
+        - STR_RIFLE_M16_CLIP
+      - - STR_FN_P90
+        - STR_FN_P90_CLIP
+        - STR_FN_P90_CLIP
+        - STR_FN_P90_CLIP
+      - - STR_FN_FAL
+        - STR_FN_FAL_CLIP
+        - STR_FN_FAL_CLIP
+        - STR_FN_FAL_CLIP
+      - - STR_SHOTGUN
+        - STR_SHOTGUN_SHELLS_AP
+        - STR_SHOTGUN_SHELLS_AP
+        - STR_SHOTGUN_SHELLS_AP
+        - STR_SHOTGUN_SHELLS_AP
+      - - STR_MINIMI
+        - STR_MINIMI_CLIP
+        - STR_MINIMI_CLIP
+      - - STR_AKSU74
+        - STR_WP_5_45_CLIP
+        - STR_WP_5_45_CLIP
+      - - STR_FN_P90
+        - STR_FN_P90_CLIP
+        - STR_FN_P90_CLIP
+        - STR_FN_P90_CLIP
+      - - STR_GALIL
+        - STR_FN_FAL_CLIP
+        - STR_FN_FAL_CLIP
+        - STR_FN_FAL_CLIP
+      - - STR_SHOTGUN
+        - STR_SHOTGUN_SHELLS_AP
+        - STR_SHOTGUN_SHELLS_AP
+        - STR_SHOTGUN_SHELLS_AP
+        - STR_SHOTGUN_SHELLS_AP
+      - - STR_MINIMI
+        - STR_MINIMI_CLIP
+        - STR_MINIMI_CLIP

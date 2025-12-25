@@ -1223,6 +1223,18 @@
     <ClCompile Include="Ufopaedia\ArticleStateUnit.cpp">
       <Filter>Ufopaedia</Filter>
     </ClCompile>
+    <ClCompile Include="StreamerConsole\EventsList.cpp">
+      <Filter>StreamerConsole</Filter>
+    </ClCompile>
+    <ClCompile Include="StreamerConsole\StatusManager.cpp">
+      <Filter>StreamerConsole</Filter>
+    </ClCompile>
+    <ClCompile Include="StreamerConsole\StreamerConsoleConnector.cpp">
+      <Filter>StreamerConsole</Filter>
+    </ClCompile>
+    <ClCompile Include="StreamerConsole\NotificationMessage.cpp">
+      <Filter>StreamerConsole</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h" />
@@ -2702,6 +2714,18 @@
     <ClInclude Include="Ufopaedia\ArticleStateUnit.h">
       <Filter>Ufopaedia</Filter>
     </ClInclude>
+    <ClInclude Include="StreamerConsole\EventsList.h">
+      <Filter>StreamerConsole</Filter>
+    </ClInclude>
+    <ClInclude Include="StreamerConsole\StatusManager.h">
+      <Filter>StreamerConsole</Filter>
+    </ClInclude>
+    <ClInclude Include="StreamerConsole\StreamerConsoleConnector.h">
+      <Filter>StreamerConsole</Filter>
+    </ClInclude>
+    <ClInclude Include="StreamerConsole\NotificationMessage.h">
+      <Filter>StreamerConsole</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Geoscape">
@@ -2766,6 +2790,9 @@
     </Filter>
     <Filter Include="Engine\rapidyaml\c4\yml\std">
       <UniqueIdentifier>{032166e7-3396-4da8-8b9a-79ec1b036488}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="StreamerConsole">
+      <UniqueIdentifier>{98a6487c-cfd6-4998-bf13-d7537380bf77}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

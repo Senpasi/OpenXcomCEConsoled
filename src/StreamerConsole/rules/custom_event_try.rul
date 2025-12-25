@@ -1,0 +1,6 @@
+name: custom_event_try
+description: "Описание тестового события, вызывает варнинг, так как нет в языковых файлах"
+everyItemList: [STR_MONEY_BRIEFCASE, STR_MONEY_BRIEFCASE]
+points: 250
+timer: 20
+timerRandom: 21

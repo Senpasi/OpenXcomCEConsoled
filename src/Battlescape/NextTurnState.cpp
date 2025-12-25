@@ -22,6 +22,7 @@
 #include "../Engine/Timer.h"
 #include "../Engine/RNG.h"
 #include "../Engine/Screen.h"
+#include "../StreamerConsole/EventsList.h"
 #include "../Mod/AlienRace.h"
 #include "../Mod/Armor.h"
 #include "../Mod/Mod.h"
@@ -48,6 +49,11 @@
 #include "Map.h"
 #include "TileEngine.h"
 #include "Pathfinding.h"
+#include <fstream>
+#include <direct.h>
+
+#include "../../libs/rapidyaml/ryml.hpp"
+#include "../../libs/rapidyaml/ryml_std.hpp"
 
 namespace OpenXcom
 {
@@ -593,7 +599,43 @@ void NextTurnState::btnBriefingReinforcementsClick(Action*)
  */
 bool NextTurnState::determineReinforcements()
 {
+	bool showAlert = false;
 	const AlienDeployment* deployment = _game->getMod()->getDeployment(_battleGame->getReinforcementsDeployment(), true);
+
+	StatusManager* statusManager = StatusManager::getInstance();
+
+	Log(LOG_DEBUG) << "Checking status reinforcement_*";
+	auto reinforcementEntries = statusManager->getStatusesByPrefix("reinforcement_");
+	std::vector<std::string> toRemove;
+
+	for (const auto& entry : reinforcementEntries)
+	{
+		std::string id = entry.first;
+		Status* status = entry.second;
+
+		CounterBasedStatus* counterStatus = dynamic_cast<CounterBasedStatus*>(status);
+		if (counterStatus)
+		{
+			std::string filename = id + ".rul"; // Например: "reinforcement_wave1.rul"
+			int limitCounter = 50;
+			while (!counterStatus->isExpired())
+			{
+				counterStatus->decrementCount();
+				if (spawnAlienReinforcementsFromEvent(filename))
+				{
+					showAlert = true;
+				}
+				if (--limitCounter <= 0)
+					break;
+			}
+			toRemove.push_back(id); // Удалим после цикла
+		}
+	}
+
+	for (const auto& id : toRemove)
+	{
+		statusManager->removeStatus(id);
+	}
 
 	int currentTurnReinforcements = _battleGame->getTurn();
 
@@ -603,7 +645,6 @@ bool NextTurnState::determineReinforcements()
 		return false;
 	}
 
-	bool showAlert = false;
 	for (auto& wave : *deployment->getReinforcementsData())
 	{
 		// 1. check pre-requisites
@@ -872,6 +913,277 @@ bool NextTurnState::determineReinforcements()
 	return showAlert;
 }
 
+const ReinforcementsData* NextTurnState::getStreamerReinforcementWave(const std::string& filename) const
+{
+	// Статический кэш — живёт всё время работы игры
+	static std::map<std::string, std::unique_ptr<ReinforcementsData> > cache;
+
+	// Проверяем, уже загружали ли этот файл
+	auto it = cache.find(filename);
+	if (it != cache.end())
+	{
+		return it->second.get();
+	}
+
+	// Пытаемся открыть файл
+	std::ifstream file(filename.c_str());
+	if (!file.is_open())
+	{
+		char cwd[1024];
+		_getcwd(cwd, sizeof(cwd));
+		Log(LOG_ERROR) << "Cannot open reinforcement file: " << cwd << "/" << filename;
+
+		// Кэшируем факт неудачи
+		// cache[filename] = nullptr;
+		return nullptr;
+	}
+
+	// Читаем содержимое
+	std::stringstream buf;
+	buf << file.rdbuf();
+	std::string yamlStr = buf.str();
+
+	// Парсим YAML
+	ryml::Tree root;
+	try
+	{
+		root = ryml::parse_in_arena(yamlStr.c_str());
+	}
+	catch (const std::exception& e)
+	{
+		Log(LOG_ERROR) << "Failed to parse YAML in file: " << filename << " | Error: " << e.what();
+		cache[filename] = nullptr;
+		return nullptr;
+	}
+
+	YAML::YamlNodeReader reader(root);
+
+	auto data = std::make_unique<ReinforcementsData>();
+	reader.tryRead("type", data->type);
+	reader.tryRead("minDifficulty", data->minDifficulty);
+	reader.tryRead("maxDifficulty", data->maxDifficulty);
+	reader.tryRead("useSpawnNodes", data->useSpawnNodes);
+	reader.tryRead("spawnNodeRanks", data->spawnNodeRanks);
+	reader.tryRead("spawnBlocks", data->spawnBlocks);
+	reader.tryRead("spawnBlockGroups", data->spawnBlockGroups);
+	reader.tryRead("maxRuns", data->maxRuns);
+	reader.tryRead("objectiveDestroyed", data->objectiveDestroyed);
+	reader.tryRead("data", data->data);
+	reader.tryRead("briefing", data->briefing);
+
+	Log(LOG_INFO) << "Streamer reinforcements loaded from: " << filename;
+
+	// Проверка на пустые данные
+	if (data->data.empty())
+	{
+		Log(LOG_WARNING) << "No reinforcement data in file: " << filename;
+		cache[filename] = std::move(data);
+		return nullptr;
+	}
+
+	// Сохраняем в кэш
+	const ReinforcementsData* result = data.get();
+	cache[filename] = std::move(data);
+	return result;
+}
+
+/**
+ * Spawns alien reinforcements triggered by external event (e.g. streamer).
+ * Ignores turn conditions and spawns immediately.
+ */
+bool NextTurnState::spawnAlienReinforcementsFromEvent(const std::string& filename)
+{
+	Log(LOG_DEBUG) << "Spawning reinforcements from file: " << filename;
+
+	const auto* ptr = getStreamerReinforcementWave(filename);
+	if (!ptr)
+	{
+		Log(LOG_DEBUG) << "Failed to load reinforcement data from: " << filename;
+		return false;
+	}
+	const auto& wave = *ptr;
+
+	if (wave.data.empty())
+	{
+		Log(LOG_DEBUG) << "wave data is empty";
+		return false;
+	}
+
+	int difficulty = _game->getSavedGame()->getDifficulty();
+	if (difficulty < wave.minDifficulty || difficulty > wave.maxDifficulty)
+	{
+		Log(LOG_DEBUG) << "wave difficulty " << difficulty << " not in from " << wave.minDifficulty << " to " << wave.maxDifficulty;
+		return false;
+	}
+
+	if (wave.objectiveDestroyed && !_battleGame->allObjectivesDestroyed())
+	{
+		Log(LOG_DEBUG) << "wave objectiveDestroyed";
+		return false;
+	}
+
+	// Пропускаем maxRuns — можно отключить, если нужно
+	if (wave.maxRuns != -1 && _battleGame->getReinforcementsMemory()[wave.type] >= wave.maxRuns)
+	{
+		Log(LOG_DEBUG) << "wave max runs is " << wave.maxRuns << " from " << _battleGame->getReinforcementsMemory()[wave.type];
+		return false;
+	}
+
+	Log(LOG_INFO) << "Spawning reinforcements from external event: " << wave.type;
+
+	// Проставляем compliant blocks и nodes (как в determineReinforcements)
+	int sizeX = _battleGame->getMapSizeX() / 10;
+	int sizeY = _battleGame->getMapSizeY() / 10;
+
+	_compliantBlocksMap.clear();
+	_compliantBlocksList.clear();
+	_compliantBlocksMap.resize(sizeX, std::vector<int>(sizeY, 1));
+
+	// Фильтр по блокам (пример: если используется spawnBlocks)
+	if (!wave.spawnBlocks.empty())
+	{
+		_compliantBlocksMap.assign(sizeX, std::vector<int>(sizeY, 0));
+		for (const auto& dir : wave.spawnBlocks)
+		{
+			if (dir == "EDGES")
+			{
+				for (int x = 0; x < sizeX; ++x)
+				{
+					_compliantBlocksMap[x][0] = 1;
+					_compliantBlocksMap[x][sizeY - 1] = 1;
+				}
+				for (int y = 0; y < sizeY; ++y)
+				{
+					_compliantBlocksMap[0][y] = 1;
+					_compliantBlocksMap[sizeX - 1][y] = 1;
+				}
+			}
+			else if (dir == "NORTH")
+			{
+				for (int x = 0; x < sizeX; ++x)
+					_compliantBlocksMap[x][0] = 1;
+			}
+			else if (dir == "SOUTH")
+			{
+				for (int x = 0; x < sizeX; ++x)
+					_compliantBlocksMap[x][sizeY - 1] = 1;
+			}
+			else if (dir == "WEST")
+			{
+				for (int y = 0; y < sizeY; ++y)
+					_compliantBlocksMap[0][y] = 1;
+			}
+			else if (dir == "EAST")
+			{
+				for (int y = 0; y < sizeY; ++y)
+					_compliantBlocksMap[sizeX - 1][y] = 1;
+			}
+		}
+	}
+
+	// Группы блоков
+	bool checkGroups = !wave.spawnBlockGroups.empty();
+	for (int x = 0; x < sizeX; ++x)
+	{
+		for (int y = 0; y < sizeY; ++y)
+		{
+			if (_compliantBlocksMap[x][y] > 0)
+			{
+				if (checkGroups)
+				{
+					// ? проверка групп, как в оригинале
+					auto terrain = _game->getMod()->getTerrain(_battleGame->getFlattenedMapTerrainNames()[x][y], false);
+					if (!terrain)
+					{
+						auto craft = _game->getMod()->getCraft(_battleGame->getFlattenedMapTerrainNames()[x][y], false);
+						if (craft)
+							terrain = craft->getBattlescapeTerrainData();
+					}
+					if (!terrain)
+					{
+						auto ufo = _game->getMod()->getUfo(_battleGame->getFlattenedMapTerrainNames()[x][y], false);
+						if (ufo)
+							terrain = ufo->getBattlescapeTerrainData();
+					}
+					if (terrain)
+					{
+						auto mapblock = terrain->getMapBlock(_battleGame->getFlattenedMapBlockNames()[x][y]);
+						if (mapblock)
+						{
+							bool groupMatched = false;
+							for (const auto& group : wave.spawnBlockGroups)
+							{
+								if (mapblock->isInGroup(group))
+								{
+									groupMatched = true;
+									break;
+								}
+							}
+							if (!groupMatched)
+								continue;
+						}
+					}
+				}
+				_compliantBlocksList.push_back(Position(x, y, 0));
+			}
+		}
+	}
+
+	// Синхронизируем
+	for (int x = 0; x < sizeX; ++x)
+		for (int y = 0; y < sizeY; ++y)
+			_compliantBlocksMap[x][y] = 0;
+	for (const auto& pos : _compliantBlocksList)
+		_compliantBlocksMap[pos.x][pos.y] = 1;
+
+	// Nodes (если useSpawnNodes)
+	_compliantNodesList.clear();
+	if (wave.useSpawnNodes)
+	{
+		bool checkRanks = !wave.spawnNodeRanks.empty();
+		bool checkZ = !wave.spawnZLevels.empty(); // ?? Добавьте spawnZLevels в struct!
+		auto nodes = _battleGame->getNodes();
+		for (auto node : *nodes)
+		{
+			if (node->isDummy())
+				continue;
+			if (checkRanks && std::find(wave.spawnNodeRanks.begin(), wave.spawnNodeRanks.end(), (int)node->getRank()) == wave.spawnNodeRanks.end())
+				continue;
+			if (checkZ && std::find(wave.spawnZLevels.begin(), wave.spawnZLevels.end(), node->getPosition().z) == wave.spawnZLevels.end())
+				continue;
+			if (_compliantBlocksMap[node->getPosition().x / 10][node->getPosition().y / 10] == 0)
+				continue;
+			if (_battleGame->getTile(node->getPosition()) && _battleGame->getTile(node->getPosition())->getUnit())
+				continue;
+			_compliantNodesList.push_back(node);
+		}
+		RNG::shuffle(_compliantNodesList);
+	}
+
+	// Размещение юнитов
+	bool success = false;
+	if (deployReinforcements(wave))
+	{
+		success = true;
+	}
+
+	if (success)
+	{
+		_battleGame->getReinforcementsMemory()[wave.type] += 1;
+
+		if (!wave.briefing.title.empty())
+		{
+			_customBriefing = wave.briefing;
+			_showBriefing = true;
+			_btnBriefingReinforcements->setVisible(true);
+		}
+
+		return true;
+	}
+
+	return false;
+}
+
 /**
  * Deploys the reinforcements, according to the alien reinforcements deployment rules.
  * @param wave Pointer to the reinforcements deployment rules.
@@ -913,7 +1225,16 @@ bool NextTurnState::deployReinforcements(const ReinforcementsData &wave)
 			std::string alienName = dd.customUnitType.empty() ? race->getMember(dd.alienRank) : dd.customUnitType;
 			Unit* rule = _game->getMod()->getUnit(alienName, true);
 			bool civilian = dd.percentageOutsideUfo != 0; // small misuse of an unused attribute ;) pls don't kill me
-			BattleUnit* unit = addReinforcement(wave, rule, dd.alienRank, civilian);
+			UnitFaction faction = FACTION_HOSTILE;
+			if (dd.percentageOutsideUfo == 1)
+			{
+				faction = FACTION_NEUTRAL;
+			}
+			else if (dd.percentageOutsideUfo == 2)
+			{
+				faction = FACTION_PLAYER; // Убедитесь, что юниты имеют соответствующую броню (например, STR_SOLDIER_UNIF), иначе могут быть проблемы с отображением или поведением.
+			} // small misuse of an unused attribute ;) pls don't kill me
+			BattleUnit* unit = addReinforcement(wave, rule, dd.alienRank, faction);
 			size_t itemLevel = (size_t)(_game->getMod()->getAlienItemLevels().at(month).at(RNG::generate(0, 9)));
 			if (unit)
 			{
@@ -934,7 +1255,7 @@ bool NextTurnState::deployReinforcements(const ReinforcementsData &wave)
 						RuleItem* ruleItem = _game->getMod()->getItem(itemType);
 						if (ruleItem)
 						{
-							_battleGame->createItemForUnit(ruleItem, unit);
+							_battleGame->createItemForUnit(ruleItem, unit, true);
 						}
 					}
 					for (auto& iset : dd.extraRandomItems)
@@ -961,12 +1282,12 @@ bool NextTurnState::deployReinforcements(const ReinforcementsData &wave)
  * @param wave Pointer to the reinforcements deployment rules.
  * @param rules Pointer to the Unit which holds info about the alien.
  * @param alienRank The rank of the alien, used for spawn point search.
- * @param civilian Spawn as a civilian?
+ * @param faction The faction to spawn the unit as (FACTION_PLAYER, FACTION_HOSTILE, FACTION_NEUTRAL).
  * @return Pointer to the created unit.
  */
-BattleUnit* NextTurnState::addReinforcement(const ReinforcementsData &wave, Unit *rules, int alienRank, bool civilian)
+BattleUnit* NextTurnState::addReinforcement(const ReinforcementsData& wave, Unit* rules, int alienRank, UnitFaction faction)
 {
-	BattleUnit* unit = _battleGame->createTempUnit(rules, civilian ? FACTION_NEUTRAL : FACTION_HOSTILE);
+	BattleUnit* unit = _battleGame->createTempUnit(rules, faction);
 
 	// 1. try nodes first
 	bool unitPlaced = false;
@@ -976,7 +1297,7 @@ BattleUnit* NextTurnState::addReinforcement(const ReinforcementsData &wave, Unit
 		{
 			if (_battleGame->setUnitPosition(unit, node->getPosition()))
 			{
-				unit->getAIModule()->setStartNode(node);
+				if (auto* ai = unit->getAIModule()) ai->setStartNode(node);
 				unit->setRankInt(alienRank);
 				unit->setDirection(RNG::generate(0, 7));
 				_battleGame->getUnits()->push_back(unit);

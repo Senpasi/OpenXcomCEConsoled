@@ -37,6 +37,22 @@ class BattleUnit;
 class Node;
 class Position;
 
+struct StreamerReinforcementWave
+{
+	std::string type;
+	int minDifficulty, maxDifficulty;
+	bool useSpawnNodes;
+	MapBlockFilterType mapBlockFilterType = MFT_BY_BOTH_UNION;
+	std::vector<int> spawnNodeRanks;
+	std::vector<std::string> spawnBlocks;
+	std::vector<int> spawnBlockGroups;
+	std::vector<int> spawnZLevels;
+	int maxRuns;
+	bool objectiveDestroyed;
+	std::vector<DeploymentData> data;
+	BriefingData briefing;
+};
+
 /**
  * Screen which announces the next turn.
  */
@@ -65,10 +81,13 @@ private:
 
 	/// Runs reinforcements logic.
 	bool determineReinforcements();
+	const ReinforcementsData* getStreamerReinforcementWave(const std::string& filename) const;
+	/// Reinforcements from streamer console
+	bool spawnAlienReinforcementsFromEvent(const std::string& filename);
 	/// Deploys the reinforcements, according to the alien reinforcements deployment rules.
 	bool deployReinforcements(const ReinforcementsData &wave);
 	/// Adds a reinforcement unit to the game.
-	BattleUnit* addReinforcement(const ReinforcementsData &wave, Unit *rules, int alienRank, bool civilian);
+	BattleUnit* addReinforcement(const ReinforcementsData& wave, Unit* rules, int alienRank, UnitFaction faction);
 	/// Finds a spot near a friend to spawn at.
 	bool placeReinforcementNearFriend(BattleUnit *unit);
 public:

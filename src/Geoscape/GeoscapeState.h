@@ -19,6 +19,7 @@
  */
 #include "../Engine/State.h"
 #include <list>
+#include "../Engine/Yaml.h"
 
 namespace OpenXcom
 {
@@ -192,7 +193,8 @@ public:
 	void resize(int &dX, int &dY) override;
 	/// Handle alien mission generation.
 	void determineAlienMissions(bool isNewMonth = true, const RuleEvent* eventRules = nullptr);
-private:
+	RuleEvent* loadCustomEventRulesFromFile(const std::string& filename, const std::string& event_id);
+  private:
 	bool attemptAlienRaceEvolution(int month, AlienBase* ab) const;
 	/// Process each individual mission script command.
 	bool processCommand(RuleMissionScript *command);

@@ -130,9 +130,13 @@
 #include "../Mod/AlienRace.h"
 #include "../Mod/RuleInterface.h"
 #include "../Mod/RuleVideo.h"
+#include "../Mod/RuleSoldier.h"
 #include "../Mod/Texture.h"
 #include "../fmath.h"
 #include "../fallthrough.h"
+#include "../StreamerConsole/EventsList.h"
+#include <fstream>
+#include <direct.h>
 
 namespace OpenXcom
 {
@@ -1489,6 +1493,266 @@ void GeoscapeState::time5Seconds()
 			return way->getFollowers()->empty();
 		}
 	);
+	
+	// Process console events
+	try
+	{
+		StatusManager* statusManager = StatusManager::getInstance();
+		if (statusManager->hasStatus("ufo_and_bases_detect_all"))
+		{
+			statusManager->removeStatus("ufo_and_bases_detect_all");
+			int detectCounter = 0;
+			for (auto* ufo : *_game->getSavedGame()->getUfos())
+			{
+				Log(LOG_DEBUG) << "detected " << ufo->getName(_game->getLanguage());
+				ufo->setDetected(true);
+				ufo->setHyperDetected(true);
+				detectCounter++;
+			}
+			for (auto* ab : *_game->getSavedGame()->getAlienBases())
+			{
+				Log(LOG_DEBUG) << "discovered " << ab->getName(_game->getLanguage());
+				ab->setDiscovered(true);
+				detectCounter++;
+			}
+			std::ostringstream ss;
+			ss << "Detect all ufos and alien bases: " << detectCounter << " found" << std::endl;
+			_game->getNotificationMessage()->showMessage(ss.str());
+			Log(LOG_INFO) << "discovered " << detectCounter << " objects";
+		}
+
+		if (statusManager->hasStatus("hiring_soldier"))
+		{
+			auto* hiringStatus = statusManager->getStatus("hiring_soldier");
+			std::string username = "";
+			std::string soldier_rule = "STR_SOLDIER";
+			float stats_bonus = 0.2; // default 20%
+			int time = 0;
+			if (hiringStatus->hasData())
+			{
+				const YAML::YamlRootNodeReader dataReader = hiringStatus->getReader();
+				dataReader.tryRead("username", username);
+				dataReader.tryRead("stats_bonus", stats_bonus);
+				dataReader.tryRead("transfer_time", time);
+				dataReader.tryRead("soldier_rule", soldier_rule);
+			}
+
+			statusManager->removeStatus("hiring_soldier");
+			Log(LOG_INFO) << "hire STR_SOLDIER";
+			RuleSoldier* rule = _game->getMod()->getSoldier(soldier_rule);
+			if (time == 0) time = rule->getTransferTime();
+			if (time == 0) time = _game->getMod()->getPersonnelTime();
+			for (auto* xbase : *_game->getSavedGame()->getBases())
+			{
+				auto t = new Transfer(time);
+				int nationality = _game->getSavedGame()->selectSoldierNationalityByLocation(_game->getMod(), rule, xbase);
+				Soldier* soldier = _game->getMod()->genSoldier(_game->getSavedGame(), rule, nationality);
+				if (!rule->getSpawnedSoldierTemplate().yaml.empty())
+				{
+					YAML::YamlRootNodeReader reader(rule->getSpawnedSoldierTemplate(), "(spawned soldier template)");
+					int nationalityOrig = soldier->getNationality();
+					soldier->load(reader.toBase(), _game->getMod(), _game->getSavedGame(), _game->getMod()->getScriptGlobal(), true); // load from soldier template
+					if (username != "")
+					{
+						soldier->setName(username);
+					}
+					else if (soldier->getNationality() != nationalityOrig)
+					{
+						soldier->genName();
+					}
+
+					// add bonus for donated soldiers
+					UnitStats* stats = soldier->getCurrentStatsEditable();
+					stats->bravery += Round(stats->bravery * stats_bonus);
+					stats->reactions += Round(stats->reactions * stats_bonus);
+					stats->firing += Round(stats->firing * stats_bonus);
+					stats->melee += Round(stats->melee * stats_bonus);
+					stats->throwing += Round(stats->throwing * stats_bonus);
+					stats->psiSkill += Round(stats->psiSkill * stats_bonus);
+					stats->psiStrength += Round(stats->psiStrength * stats_bonus);
+					stats->mana += Round(stats->mana * stats_bonus);
+					stats->tu += Round(stats->tu * stats_bonus);
+					stats->health += Round(stats->health * stats_bonus);
+					stats->strength += Round(stats->strength * stats_bonus);
+					stats->stamina += Round(stats->stamina * stats_bonus);
+				}
+				t->setSoldier(soldier);
+				xbase->getTransfers()->push_back(t);
+				std::ostringstream ss;
+				ss << "Hire new soldier: " << soldier->getName() << std::endl;
+				_game->getNotificationMessage()->showMessage(ss.str());
+				break;
+			}
+		}
+
+		if (statusManager->hasStatus("ask_info"))
+		{
+			statusManager->removeStatus("ask_info");
+
+			std::string info_data = "getEventsList:";
+			for (auto& itemName : *_game->getMod()->getEventList())
+			{
+				info_data += " \n" + itemName;
+			}
+
+			_game->_streamerConnector.sendData(info_data);
+			Log(LOG_INFO) << "info_data " << info_data;
+		}
+
+		
+		std::vector<const RuleEvent*> toBeGenerated;
+		if (statusManager->hasStatus("geoscape_event"))
+		{
+			auto* counterStatus = dynamic_cast<CounterBasedStatus*>(statusManager->getStatus("geoscape_event"));
+			std::string eventName;
+			if (counterStatus->hasData())
+			{
+				const YAML::YamlRootNodeReader dataReader = counterStatus->getReader();
+				dataReader.tryRead("event_name", eventName);
+			}
+			int limitCounter = 50;
+			while (!counterStatus->isExpired())
+			{
+				if(eventName.empty()) break;
+				counterStatus->decrementCount();
+
+				auto* eventRules = _game->getMod()->getEvent(eventName, false);
+				if (eventRules)
+				{
+					toBeGenerated.push_back(eventRules);
+				}
+				else
+				{
+					Log(LOG_WARNING) << "Failed to append geoscape event " << eventName;
+					break;
+				}
+				
+				if (--limitCounter <= 0)
+					break;
+			}
+			statusManager->removeStatus("geoscape_event");
+		}
+
+		auto eventsEntries = statusManager->getStatusesByPrefix("custom_event_");
+		std::vector<std::string> toRemove;
+		for (const auto& entry : eventsEntries)
+		{
+			std::string id = entry.first;
+			Status* status = entry.second;
+
+			CounterBasedStatus* counterStatus = dynamic_cast<CounterBasedStatus*>(status);
+			if (counterStatus)
+			{
+				std::string filename = id + ".rul";
+				
+				int limitCounter = 50;
+				while (!counterStatus->isExpired())
+				{
+					counterStatus->decrementCount();
+
+					RuleEvent* eventRules = loadCustomEventRulesFromFile(filename, id);
+					if (eventRules)
+					{
+						toBeGenerated.push_back(eventRules);
+					}
+					else
+					{
+						Log(LOG_WARNING) << "Failed to append geoscape event " << filename;
+						break;
+					}
+					
+					if (--limitCounter <= 0)
+						break;
+				}
+				toRemove.push_back(id); // Удалим после цикла
+			}
+		}
+
+		for (auto* eventRules : toBeGenerated)
+		{
+			_game->getSavedGame()->spawnEvent(eventRules);
+		}
+
+		for (const auto& id : toRemove)
+		{
+			statusManager->removeStatus(id);
+		}
+
+	}
+	catch (const std::exception& e)
+	{
+		Log(LOG_ERROR) << e.what();
+	}
+}
+
+RuleEvent* GeoscapeState::loadCustomEventRulesFromFile(const std::string& filename, const std::string& event_id)
+{
+	if (filename.empty())
+	{
+		Log(LOG_WARNING) << "Failed to load custom event rules from file: filename is empty";
+		return nullptr;
+	}
+
+	// Статический кэш — живёт всё время работы игры
+	static std::map<std::string, std::unique_ptr<RuleEvent> > cache;
+
+	// Проверяем, уже загружали ли этот файл
+	auto it = cache.find(filename);
+	if (it != cache.end())
+	{
+		return it->second.get();
+	}
+
+	// Пытаемся открыть файл
+	std::ifstream file(filename.c_str());
+	if (!file.is_open())
+	{
+		char cwd[1024];
+		_getcwd(cwd, sizeof(cwd));
+		Log(LOG_ERROR) << "Cannot open custom event file: " << cwd << "/" << filename;
+
+		// Кэшируем факт неудачи
+		// cache[filename] = nullptr;
+		return nullptr;
+	}
+
+	// Читаем содержимое
+	std::stringstream buf;
+	buf << file.rdbuf();
+	std::string yamlStr = buf.str();
+
+	// Парсим YAML
+	ryml::Tree root;
+	try
+	{
+		root = ryml::parse_in_arena(yamlStr.c_str());
+	}
+	catch (const std::exception& e)
+	{
+		Log(LOG_ERROR) << "Failed to parse YAML in file: " << filename << " | Error: " << e.what();
+		cache[filename] = nullptr;
+		return nullptr;
+	}
+
+	YAML::YamlNodeReader reader(root);
+
+	// Проверка на пустые данные
+	if (reader.childrenCount() < 1)
+	{
+		Log(LOG_WARNING) << "No reinforcement data in file: " << filename;
+		cache[filename] = nullptr;
+		return nullptr;
+	}
+	//return nullptr;
+
+	auto ruleEvent = std::make_unique<RuleEvent>(event_id);
+	ruleEvent->load(reader);
+
+	Log(LOG_INFO) << "Streamer custom event loaded from: " << filename;
+
+	// Сохраняем в кэш
+	cache[filename] = std::move(ruleEvent);
+	return cache[filename].get();
 }
 
 /**
@@ -2102,6 +2366,20 @@ void GeoscapeState::ufoDetection(Ufo* ufo, const std::vector<Craft*>* activeCraf
 	{
 		detected = maskBitOr(detected, craft->detect(ufo, save, alreadyTracked));
 	}
+
+	if (maskTest(detected, DETECTION_RADAR) && !maskTest(detected, DETECTION_HYPERWAVE))
+	{
+		StatusManager* statusManager = StatusManager::getInstance();
+		statusManager->update(0);
+		Log(LOG_DEBUG) << "Checking status ufo_force_hyperwave_detect";
+
+		if (statusManager->hasStatus("ufo_force_hyperwave_detect"))
+		{
+			Log(LOG_DEBUG) << "Status ufo_force_hyperwave_detect found";
+			detected = maskBitOr(detected, DETECTION_HYPERWAVE);
+		}
+	}
+
 
 	if (!alreadyTracked)
 	{

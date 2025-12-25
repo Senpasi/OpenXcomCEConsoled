@@ -1,0 +1,24 @@
+type: streamer_wave
+minDifficulty: 0
+maxDifficulty: 4
+useSpawnNodes: true
+spawnNodeRanks: [ 0, 1 ]
+briefing:
+  title: STR_STREAMER_XCOM_REINFORCEMENTS_TITLE
+  desc: "Один из наших замаскированных агентов оказался неподалеку, говорит у него с собой бабаха."
+data:
+  - alienRank: 11
+    customUnitType: STR_WESTMAN
+    lowQty: 1
+    medQty: 1
+    highQty: 1
+    dQty: 0
+    extraQty: 0
+    percentageOutsideUfo: 2
+    itemSets:
+          -
+            - STR_BLASTER_LAUNCHER
+            - STR_BLASTER_BOMB
+            - STR_BLASTER_BOMB
+            - STR_BLASTER_BOMB
+            - STR_BLASTER_BOMB

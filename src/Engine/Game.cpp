@@ -63,7 +63,7 @@ Game::Game(const std::string &title) : _screen(0), _cursor(0), _lang(0), _save(0
 	Options::mute = false;
 
 	// Initialize SDL
-	if (SDL_Init(SDL_INIT_VIDEO) < 0)
+	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0)
 	{
 		Log(LOG_ERROR) << SDL_GetError();
 		Log(LOG_WARNING) << "No video detected, quit.";
@@ -104,6 +104,10 @@ Game::Game(const std::string &title) : _screen(0), _cursor(0), _lang(0), _save(0
 	// Create blank language
 	_lang = new Language();
 
+	_notificationMessage = new NotificationMessage(200, 20, 20, 5);
+
+	_streamerConnector.start();
+
 	_timeOfLastFrame = 0;
 }
 
@@ -128,6 +132,8 @@ Game::~Game()
 	delete _mod;
 	delete _screen;
 	delete _fpsCounter;
+	_streamerConnector.stop();
+	delete _notificationMessage;
 
 	Mix_CloseAudio();
 
@@ -149,9 +155,14 @@ void Game::run()
 	Uint32 lastMouseMoveEvent = 0;
 	Sint16 xrel = 0;
 	Sint16 yrel = 0;
+	char* receivedMessage = nullptr;
+	EventsList eventsList;
 
 	while (!_quit)
 	{
+		Uint32 currentTime = SDL_GetTicks();
+		float deltaTime = (currentTime - _timeOfLastFrame) / 1000.0f; // convert to seconds
+
 		// Clean up states
 		while (!_deleted.empty())
 		{
@@ -177,6 +188,15 @@ void Game::run()
 			ev.motion.y = y;
 			Action action = Action(&ev, _screen->getXScale(), _screen->getYScale(), _screen->getCursorTopBlackBand(), _screen->getCursorLeftBlackBand());
 			_states.back()->handle(&action);
+		}
+
+		static bool first = true;
+		if (first && _init && _save)
+		{
+			_notificationMessage->initText(_mod->getFont("FONT_BIG"), _mod->getFont("FONT_SMALL"), _lang);
+			_notificationMessage->setPalette(_states.back()->getPalette());
+			_notificationMessage->setColor(134);
+			first = false;
 		}
 
 		// Process events
@@ -328,12 +348,32 @@ void Game::run()
 			}
 		}
 
+		try
+		{
+			if (_streamerConnector.tryGetReceivedData(&receivedMessage))
+			{
+				Log(LOG_INFO) << receivedMessage;
+				std::string eventId = eventsList.processEvent(receivedMessage);
+				// if(!_states.empty()) _states.back()->setStreamerConsoleMessage(eventId);
+				_notificationMessage->showMessage(eventId);
+				delete[] receivedMessage;
+			}
+
+			// Update events duration
+			eventsList.updateStatusManager(deltaTime);
+		}
+		catch (const std::exception& e)
+		{
+			Log(LOG_ERROR) << e.what();
+		}
+
 		// Process rendering
 		if (runningState != PAUSED)
 		{
 			// Process logic
 			_states.back()->think();
 			_fpsCounter->think();
+			_notificationMessage->think();
 			if (Options::FPS > 0 && !(Options::useOpenGL && Options::vSyncForOpenGL))
 			{
 				// Update our FPS delay time based on the time of the last draw.
@@ -364,6 +404,7 @@ void Game::run()
 					(*i)->blit();
 				}
 				_fpsCounter->blit(_screen->getSurface());
+				_notificationMessage->blit(_screen->getSurface());
 				_cursor->blit(_screen->getSurface());
 				_screen->flip();
 			}

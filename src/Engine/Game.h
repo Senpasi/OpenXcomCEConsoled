@@ -20,6 +20,9 @@
 #include <list>
 #include <string>
 #include <SDL.h>
+#include "../StreamerConsole/StreamerConsoleConnector.h"
+#include "../StreamerConsole/EventsList.h"
+#include "../StreamerConsole/NotificationMessage.h"
 
 namespace OpenXcom
 {
@@ -53,6 +56,7 @@ private:
 	Mod *_mod;
 	bool _quit, _init, _update;
 	FpsCounter *_fpsCounter;
+	NotificationMessage *_notificationMessage;
 	bool _mouseActive;
 	unsigned int _timeOfLastFrame;
 	int _timeUntilNextFrame;
@@ -167,6 +171,10 @@ public:
 
 	/// Gets the scroll step value.
 	int getScrollStep() const { return _scrollStep; }
+
+	StreamerConsoleConnector _streamerConnector;
+	/// Gets the NotificationMessage for streamer console.
+	NotificationMessage *getNotificationMessage() const { return _notificationMessage; }
 };
 
 }

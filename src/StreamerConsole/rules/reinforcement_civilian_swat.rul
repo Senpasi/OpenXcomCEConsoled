@@ -1,0 +1,41 @@
+type: streamer_wave
+minDifficulty: 0
+maxDifficulty: 4
+spawnBlocks: [EDGES]
+useSpawnNodes: false
+spawnNodeRanks: [ 0, 1 ]
+briefing:
+  palette: 7
+  background: CITY_RAID_BACKGROUND.SCR
+  music: GMENBASE
+  title: STR_POLICE_REINFORCEMENTS
+  desc: STR_POLICE_REINFORCEMENTS_DESCRIPTION
+data:
+  - alienRank: 13
+    customUnitType: STR_MALE_SWAT
+    lowQty: 3
+    highQty: 6
+    dQty: 0
+    extraQty: 0
+    percentageOutsideUfo: 1
+    itemSets:
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
