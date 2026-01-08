@@ -1,0 +1,25 @@
+ufopaedia:
+  - id: STR_MEGAZOMBIE_BIG_JOE
+    type_id: 7
+    section: STR_ALIEN_LIFE_FORMS
+    requires:
+      - STR_MEGAZOMBIE_BIG_JOE
+    image_id: UFOPEDIA_IMG_MEGAZOMBIE
+    text: STR_MEGAZOMBIE_BIG_JOE_UFOPEDIA
+    text_width: 158
+    listOrder: 164190
+  - id: STR_MEGAZOMBIE_BIG_JOE_AUTOPSY
+    type_id: 7
+    section: STR_ALIEN_LIFE_FORMS
+    requires:
+      - STR_MEGAZOMBIE_BIG_JOE_CORPSE
+    image_id: UFOPEDIA_IMG_MEGAZOMBIE_AUTOPSY_CPAL
+    text: STR_MEGAZOMBIE_AUTOPSY_UFOPEDIA
+    text_width: 151
+    listOrder: 164200
+  - id: STR_MEGAZOMBIE_BIG_JOE_ARMOR
+    type_id: 5
+    section: STR_ALIEN_LIFE_FORMS
+    requires:
+      - STR_MEGAZOMBIE_BIG_JOE_ARMOR
+    listOrder: 164191

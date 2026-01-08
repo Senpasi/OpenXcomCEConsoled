@@ -1,0 +1,15 @@
+items:
+  - type: STR_MEGAZOMBIE_BIG_JOE_CORPSE
+    categories: [STR_CORPSES]
+    size: 1
+    costSell: 15000
+    battleType: 11
+    listOrder: 62360
+  - type: STR_MEGAZOMBIE_BIG_JOE
+    categories: [STR_BEASTS]
+    size: 0.0
+    recover: true
+    liveAlien: true
+    prisonType: 2
+    costSell: 60000
+    listOrder: 115470

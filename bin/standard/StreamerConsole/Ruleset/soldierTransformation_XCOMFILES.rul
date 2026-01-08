@@ -1,0 +1,7 @@
+soldierTransformation:
+  - name: STR_REVIVAL_BY_DONATION
+    keepSoldierArmor: true
+    allowsDeadSoldiers: true
+    allowsLiveSoldiers: false
+    needsCorpseRecovered: false
+    listOrder: 830

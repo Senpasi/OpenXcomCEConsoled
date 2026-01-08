@@ -1,0 +1,9 @@
+#
+# metadata.yaml for Streamer Console
+
+name: "Streamer Console"
+id: streamer-console
+version: 1.0
+description: "Additional scripts, resources, traslations, etc for Streamer Console"
+author: Senpasi
+master: "*"

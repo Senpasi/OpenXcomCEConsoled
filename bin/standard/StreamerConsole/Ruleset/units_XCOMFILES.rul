@@ -1,0 +1,30 @@
+﻿units:
+  - type: STR_MEGAZOMBIE_BIG_JOE
+    race: STR_ZOMBIE
+    rank: STR_LIVE_TERRORIST
+    stats:
+      tu: 80
+      stamina: 180
+      health: 4500
+      bravery: 110
+      reactions: 40
+      firing: 0
+      throwing: 0
+      strength: 80
+      psiStrength: 80
+      psiSkill: 0
+      melee: 75
+      mana: 70
+    armor: STR_MEGAZOMBIE_BIG_JOE_ARMOR
+    standHeight: 24
+    kneelHeight: 18
+    value: 35
+    deathSound: 74
+    intelligence: 4
+    aggression: 5
+    isLeeroyJenkins: true
+    livingWeapon: true
+    liveAlien: STR_MEGAZOMBIE_BIG_JOE
+    showFullNameInAlienInventory: 1
+    builtInWeaponSets:
+      - - STR_ZOMBIE_WEAPON
