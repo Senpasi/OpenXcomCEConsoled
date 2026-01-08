@@ -1,0 +1,96 @@
+type: streamer_wave
+minDifficulty: 0
+maxDifficulty: 4
+useSpawnNodes: true
+spawnNodeRanks: [ 0, 1 ]
+briefing:
+  title: STR_STREAMER_XCOM_REINFORCEMENTS_TITLE
+  desc: "Технические службы X-COM докладывают о развертывании автоматезированных танкеток в зоне операции"
+data:
+  - alienRank: 16
+    customUnitType: STR_XCOM_ROBOTURRET_MINIGUN
+    lowQty: 2
+    medQty: 2
+    highQty: 2
+    dQty: 3
+    extraQty: 0
+    percentageOutsideUfo: 2 # 0 - противник, 1 - гражданские, 2 - xcom
+    itemSets:
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+  - alienRank: 16
+    customUnitType: STR_XCOM_ROBOTURRET_LASER
+    lowQty: 2
+    medQty: 2
+    highQty: 2
+    dQty: 3
+    extraQty: 0
+    percentageOutsideUfo: 2
+    itemSets:
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+  - alienRank: 16
+    customUnitType: STR_XCOM_ROBOTURRET_PLASMA
+    lowQty: 2
+    medQty: 2
+    highQty: 2
+    dQty: 3
+    extraQty: 0
+    percentageOutsideUfo: 2
+    itemSets:
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []

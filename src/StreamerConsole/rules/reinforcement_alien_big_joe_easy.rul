@@ -1,0 +1,67 @@
+type: streamer_wave
+minDifficulty: 0
+maxDifficulty: 4
+useSpawnNodes: true
+spawnNodeRanks: [ 0, 1 ]
+briefing:
+  title: STR_STREAMER_ALIEN_REINFORCEMENTS_TITLE
+  desc: STR_BIG_JOE_EASY_BRIEFING
+data:
+  - alienRank: 16
+    customUnitType: STR_MEGAZOMBIE_BIG_JOE
+    lowQty: 1
+    medQty: 1
+    highQty: 1
+    dQty: 0
+    extraQty: 0
+    percentageOutsideUfo: 0 # 0 - противник, 1 - гражданские, 2 - xcom
+    itemSets:
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+  - alienRank: 16
+    customUnitType: STR_XCOM_ROBOTURRET_MINIGUN
+    lowQty: 2
+    medQty: 2
+    highQty: 2
+    dQty: 3
+    extraQty: 0
+    percentageOutsideUfo: 2
+    itemSets:
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
+      -
+        []
