@@ -657,6 +657,7 @@ void SoldierInfoState::setSoldierId(size_t soldier)
 void SoldierInfoState::edtSoldierChange(Action *)
 {
 	_soldier->setName(_edtSoldier->getText());
+	_game->sendGameContext(true);
 }
 
 /**

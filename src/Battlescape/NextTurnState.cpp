@@ -312,6 +312,26 @@ NextTurnState::NextTurnState(SavedBattleGame *battleGame, BattlescapeState *stat
 			_txtMessageReinforcements->setText(messageReinforcements);
 		}
 	}
+	
+	/*std::string info_data = "Soldiers list:";
+	YAML::YamlRootNodeWriter writer;
+	writer.setAsMap();
+	writer.setBlockStyle();
+	writer.write("action", "upstream");
+	writer.write("brief", _battleGame->getMissionTarget());
+	auto unitsWriter = writer["units"];
+	unitsWriter.setAsSeq();
+	for (auto& bu : *_battleGame->getUnits())
+	{
+		if (bu->getFaction() != FACTION_PLAYER) continue;
+		auto unitWriter = unitsWriter.write();
+		bu->save(unitWriter, _game->getMod()->getScriptGlobal());
+		unitWriter.write("name", bu->getName(_game->getLanguage()));
+	}
+	info_data += writer.emit().yaml;
+
+	_game->_streamerConnector.sendData(info_data);*/
+	_game->sendGameContext();
 
 	if (Options::skipNextTurnScreen && message.empty() && messageReinforcements.empty())
 	{
@@ -1231,7 +1251,15 @@ bool NextTurnState::deployReinforcements(const ReinforcementsData &wave)
 		for (int i = 0; i < quantity; ++i)
 		{
 			std::string alienName = dd.customUnitType.empty() ? race->getMember(dd.alienRank) : dd.customUnitType;
-			Unit* rule = _game->getMod()->getUnit(alienName, true);
+			Unit* rule = _game->getMod()->getUnit(alienName, false);
+			if (!rule)
+			{
+				std::ostringstream ss;
+				ss << "UnitRule " << alienName << " not found!"; 
+				Log(LOG_ERROR) << ss.str();
+				_game->getNotificationMessage()->showMessage(ss.str());
+				continue;
+			}
 			bool civilian = dd.percentageOutsideUfo != 0; // small misuse of an unused attribute ;) pls don't kill me
 			UnitFaction faction = FACTION_HOSTILE;
 			if (dd.percentageOutsideUfo == 1)

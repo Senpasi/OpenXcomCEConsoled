@@ -63,6 +63,7 @@ private:
 	bool _ctrl, _alt, _shift, _rmb, _mmb;
 	int _scrollStep;
 	static const double VOLUME_GRADIENT;
+	Uint32 _lastSendTime;
 
 public:
 	/// Creates a new game and initializes SDL.
@@ -175,6 +176,7 @@ public:
 	StreamerConsoleConnector _streamerConnector;
 	/// Gets the NotificationMessage for streamer console.
 	NotificationMessage *getNotificationMessage() const { return _notificationMessage; }
+	void sendGameContext(bool force = false);
 };
 
 }

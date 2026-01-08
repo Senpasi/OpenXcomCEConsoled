@@ -32,6 +32,7 @@
 #include "../Interface/FpsCounter.h"
 #include "../Mod/Mod.h"
 #include "../Savegame/SavedGame.h"
+#include "../Savegame/Base.h"
 #include "../Savegame/SavedBattleGame.h"
 #include "Action.h"
 #include "Exception.h"
@@ -109,6 +110,7 @@ Game::Game(const std::string &title) : _screen(0), _cursor(0), _lang(0), _save(0
 	_streamerConnector.start();
 
 	_timeOfLastFrame = 0;
+	_lastSendTime = 0;
 }
 
 /**
@@ -196,6 +198,7 @@ void Game::run()
 			_notificationMessage->initText(_mod->getFont("FONT_BIG"), _mod->getFont("FONT_SMALL"), _lang);
 			_notificationMessage->setPalette(_states.back()->getPalette());
 			_notificationMessage->setColor(134);
+			sendGameContext(true);
 			first = false;
 		}
 
@@ -422,6 +425,53 @@ void Game::run()
 	}
 
 	Options::save();
+}
+
+void Game::sendGameContext(bool force)
+{
+	try
+	{
+		const Uint32 now = SDL_GetTicks();
+		const Uint32 minInterval = 1000;
+
+		if (!force && (now - _lastSendTime < minInterval))
+		{
+			return;
+		}
+
+		_lastSendTime = now;
+
+		if (_save)
+		{
+			YAML::YamlRootNodeWriter writer;
+			writer.setAsMap();
+			writer.setBlockStyle();
+			writer.write("action", "context");
+			writer.write("source", "xcom");
+			auto soldiersWriter = writer["soldiers"];
+			soldiersWriter.setAsSeq();
+			for (auto* xbase : *_save->getBases())
+			{
+				for (auto* soldier_item : *xbase->getSoldiers())
+				{
+					auto soldierWriter = soldiersWriter.write();
+					soldierWriter.setAsMap();
+					soldierWriter.write("name", soldier_item->getName());
+				}
+			}
+			for (auto* soldier_item : *_save->getDeadSoldiers())
+			{
+				auto soldierWriter = soldiersWriter.write();
+				soldierWriter.setAsMap();
+				soldierWriter.write("name", soldier_item->getName());
+			}
+			_streamerConnector.sendData(writer.emit().yaml);
+		}
+	}
+	catch(const std::exception& e)
+	{
+		Log(LOG_ERROR) << e.what();
+	}
 }
 
 /**

@@ -131,6 +131,7 @@
 #include "../Mod/RuleInterface.h"
 #include "../Mod/RuleVideo.h"
 #include "../Mod/RuleSoldier.h"
+#include "../Mod/RuleSoldierTransformation.h"
 #include "../Mod/Texture.h"
 #include "../fmath.h"
 #include "../fallthrough.h"
@@ -1563,7 +1564,7 @@ void GeoscapeState::time5Seconds()
 
 					// add bonus for donated soldiers
 					UnitStats* stats = soldier->getCurrentStatsEditable();
-					stats->bravery += Round(stats->bravery * stats_bonus);
+					stats->bravery += Round(stats->bravery * stats_bonus / 10) * 10;
 					stats->reactions += Round(stats->reactions * stats_bonus);
 					stats->firing += Round(stats->firing * stats_bonus);
 					stats->melee += Round(stats->melee * stats_bonus);
@@ -1585,18 +1586,99 @@ void GeoscapeState::time5Seconds()
 			}
 		}
 
+		if (statusManager->hasStatus("soldier_transformation"))
+		{
+			auto* trasformationStatus = statusManager->getStatus("soldier_transformation");
+			std::ostringstream ss;
+			std::string username = "";
+
+			std::string trasformation_rule = "";
+			if (trasformationStatus->hasData())
+			{
+				const YAML::YamlRootNodeReader dataReader = trasformationStatus->getReader();
+				dataReader.tryRead("username", username);
+				dataReader.tryRead("transformation_rule", trasformation_rule);
+			}
+
+			statusManager->removeStatus("soldier_transformation");
+			Soldier* soldier = nullptr;
+			Base* _trasformation_base = nullptr;
+
+			for (auto* xbase : *_game->getSavedGame()->getBases())
+			{
+				for (auto* soldier_item : *xbase->getSoldiers())
+				{
+					if (soldier_item->getName() == username)
+					{
+						soldier = soldier_item;
+						_trasformation_base = xbase;
+						break;
+					}
+				}
+				if (soldier != nullptr)
+					break;
+			}
+			for (auto* soldier_item : *_game->getSavedGame()->getDeadSoldiers())
+			{
+				if (soldier_item->getName() == username)
+				{
+					soldier = soldier_item;
+					for (auto* xbase : *_game->getSavedGame()->getBases())
+					{
+						_trasformation_base = xbase; //todo: found original base
+						break;
+					}
+					break;
+				}
+			}
+
+			Log(LOG_INFO) << "transformation " << trasformation_rule;
+			RuleSoldierTransformation* _transformationRule = _game->getMod()->getSoldierTransformation(trasformation_rule);
+
+			if (soldier != nullptr && _transformationRule != nullptr)
+			{
+				if (soldier->getDeath())
+				{
+					// true resurrect = remove from Memorial Wall
+					auto it = find(_game->getSavedGame()->getDeadSoldiers()->begin(), _game->getSavedGame()->getDeadSoldiers()->end(), soldier);
+					if (it != _game->getSavedGame()->getDeadSoldiers()->end())
+					{
+						_game->getSavedGame()->getDeadSoldiers()->erase(it);
+					}
+				}
+				if (_transformationRule->getTransferTime() > 0 || _transformationRule->isCreatingClone() || soldier->getDeath())
+				{
+					// handle training (transfer rules)
+					soldier->setPsiTraining(false);
+					if (soldier->isInTraining())
+					{
+						soldier->setReturnToTrainingWhenHealed(true);
+					}
+					soldier->setTraining(false);
+
+					int transferTime = _transformationRule->getTransferTime() > 0 ? _transformationRule->getTransferTime() : 24;
+					Transfer* transfer = new Transfer(transferTime);
+					transfer->setSoldier(soldier);
+					_trasformation_base->getTransfers()->push_back(transfer);
+				}
+
+				soldier->transform(_game->getMod(), _transformationRule, soldier, _trasformation_base);
+				ss << soldier->getName() << " apply transformation " << tr(trasformation_rule) << std::endl;
+			}
+			else
+			{
+				if (soldier == nullptr)
+					ss << "Soldier not found: " << username << std::endl;
+				if (_transformationRule == nullptr)
+					ss << "Rule not found: " << trasformation_rule << std::endl;
+			}
+			_game->getNotificationMessage()->showMessage(ss.str());
+		}
+
 		if (statusManager->hasStatus("ask_info"))
 		{
 			statusManager->removeStatus("ask_info");
-
-			std::string info_data = "getEventsList:";
-			for (auto& itemName : *_game->getMod()->getEventList())
-			{
-				info_data += " \n" + itemName;
-			}
-
-			_game->_streamerConnector.sendData(info_data);
-			Log(LOG_INFO) << "info_data " << info_data;
+			_game->sendGameContext(true);
 		}
 
 		
@@ -2484,6 +2566,7 @@ void GeoscapeState::time1Hour()
 	if (window)
 	{
 		popup(new ItemsArrivingState(this));
+		_game->sendGameContext(true);
 	}
 	// Handle Production
 	for (auto* xbase : *_game->getSavedGame()->getBases())
@@ -3195,6 +3278,8 @@ void GeoscapeState::time1Month()
 			}
 		}
 	}
+	
+	_game->sendGameContext();
 }
 
 /**
