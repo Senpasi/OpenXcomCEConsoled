@@ -10,6 +10,8 @@ namespace OpenXcom
 
 static const wchar_t* PIPE_NAME = L"\\\\.\\pipe\\game-event-pipe";
 static const wchar_t* PIPE_NAME_WRITE = L"\\\\.\\pipe\\game-event-pipe-response";
+static const size_t MAX_SEND_QUEUE_SIZE = 100;
+static const size_t MAX_RECEIVE_QUEUE_SIZE = 100;
 
 StreamerConsoleConnector::StreamerConsoleConnector()
 	: stopFlag_(false), stopEvent_(nullptr)
@@ -42,7 +44,7 @@ void StreamerConsoleConnector::stop()
 	stopFlag_ = true;
 	SetEvent(stopEvent_);
 
-	// Пробуждаем потоки, ожидающие на условных переменных
+	// Wake up threads waiting on condition variables
 	cvReceive_.notify_one();
 	cvSend_.notify_one();
 
@@ -66,7 +68,7 @@ void StreamerConsoleConnector::processRead()
 			PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
 			1,
 			65536, 65536,
-			5000, // 5 сек на подключение
+			5000, // 5 seconds
 			nullptr);
 
 		if (hPipe == INVALID_HANDLE_VALUE)
@@ -83,7 +85,7 @@ void StreamerConsoleConnector::processRead()
 			continue;
 		}
 
-		// Асинхронное подключение
+		// async connect
 		BOOL connected = ConnectNamedPipe(hPipe, &connectOverlapped);
 		DWORD err = GetLastError();
 
@@ -94,11 +96,11 @@ void StreamerConsoleConnector::processRead()
 			continue;
 		}
 
-		// Ожидаем подключения или остановки
+		// wait connect or stop
 		HANDLE waitHandles[] = {connectOverlapped.hEvent, stopEvent_};
 		DWORD result = WaitForMultipleObjects(2, waitHandles, FALSE, INFINITE);
 
-		if (result == WAIT_OBJECT_0 + 1) // stopEvent сработал
+		if (result == WAIT_OBJECT_0 + 1) // stopEvent triggered
 		{
 			CancelIoEx(hPipe, &connectOverlapped);
 			CloseHandle(connectOverlapped.hEvent);
@@ -116,7 +118,7 @@ void StreamerConsoleConnector::processRead()
 			}
 		}
 
-		// Подключён — начинаем читать сообщения в цикле
+		// connected - read message in loop
 		char buffer[65536];
 		while (!stopFlag_)
 		{
@@ -161,6 +163,11 @@ void StreamerConsoleConnector::processRead()
 			buffer[bytesRead] = '\0';
 			{
 				std::lock_guard<std::mutex> lk(queueMutex_);
+				if (receivedDataQueue_.size() >= MAX_RECEIVE_QUEUE_SIZE)
+				{
+					delete[] receivedDataQueue_.front();
+					receivedDataQueue_.pop();
+				}
 				char* msg = new char[bytesRead + 1];
 				strcpy(msg, buffer);
 				receivedDataQueue_.push(msg);
@@ -190,7 +197,7 @@ void StreamerConsoleConnector::processWrite()
 		sendDataQueue_.pop();
 		lk.unlock();
 
-		// Подключаемся к серверу как клиент
+		// connect to server as client
 		HANDLE hPipe = CreateFileW(
 			PIPE_NAME_WRITE,
 			GENERIC_READ | GENERIC_WRITE,
@@ -203,7 +210,7 @@ void StreamerConsoleConnector::processWrite()
 		if (hPipe == INVALID_HANDLE_VALUE)
 		{
 			DWORD err = GetLastError();
-			if (err != ERROR_PIPE_BUSY) // занят — можно попробовать позже
+			if (err != ERROR_PIPE_BUSY) // busy - try again
 			{
 				std::cerr << "Failed send to pipe, error " << err << std::endl;
 				continue;
@@ -212,7 +219,7 @@ void StreamerConsoleConnector::processWrite()
 			continue;
 		}
 
-		// Проверим, что это действительно pipe
+		// check handler is pipe
 		if (!SetNamedPipeHandleState(hPipe, nullptr, nullptr, nullptr))
 		{
 			CloseHandle(hPipe);
@@ -267,6 +274,10 @@ void StreamerConsoleConnector::sendData(const std::string& data)
 {
 	{
 		std::lock_guard<std::mutex> lk(queueMutex_);
+		if (sendDataQueue_.size() >= MAX_SEND_QUEUE_SIZE)
+		{
+			sendDataQueue_.pop();
+		}
 		sendDataQueue_.push(data);
 	}
 	cvSend_.notify_one();
