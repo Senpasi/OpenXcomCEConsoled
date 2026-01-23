@@ -3204,6 +3204,15 @@ bool TileEngine::hitUnit(BattleActionAttack attack, BattleUnit *target, const Po
 		}
 	}
 
+	// Send hit notification to streamer
+	if (_save->getBattleState())
+	{
+		bool unitKilled = (target->getHealth() <= 0);
+		bool unitStunned = (target->getStunlevel() >= target->getHealth() && target->getStatus() != STATUS_UNCONSCIOUS);
+		bool armorPenetrated = (healthDamage > 0);
+		_save->getBattleState()->getBattleGame()->sendHitNotification(target, attack.attacker, armorPenetrated, unitKilled, unitStunned);
+	}
+
 	return true;
 }
 

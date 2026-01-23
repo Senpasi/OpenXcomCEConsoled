@@ -3101,6 +3101,60 @@ bool BattlescapeGame::convertInfected()
 	return retVal;
 }
 
+void BattlescapeGame::sendHitNotification(BattleUnit* target, BattleUnit* attacker, bool armorPenetrated, bool unitKilled, bool unitStunned)
+{
+    if (!_parentState || !_parentState->getGame())
+        return;
+
+    YAML::YamlRootNodeWriter writer;
+    writer.setAsMap();
+    writer.setBlockStyle();
+    writer.write("action", "context");
+    writer.write("event", "hit_notification");
+    
+    auto targetWriter = writer["target"];
+    targetWriter.setAsMap();
+    targetWriter.write("name", target->getName(_parentState->getGame()->getLanguage()));
+    targetWriter.write("id", target->getId());
+    targetWriter.write("faction", target->getOriginalFaction());
+    targetWriter.write("health", target->getHealth());
+    targetWriter.write("stun", target->getStunlevel());
+    targetWriter.write("status", target->getStatus());
+    
+    if (attacker)
+    {
+        auto attackerWriter = writer["attacker"];
+        attackerWriter.setAsMap();
+        attackerWriter.write("name", attacker->getName(_parentState->getGame()->getLanguage()));
+        attackerWriter.write("id", attacker->getId());
+        attackerWriter.write("faction", attacker->getOriginalFaction());
+    }
+    
+    writer.write("armor_penetrated", armorPenetrated);
+    writer.write("killed", unitKilled);
+    writer.write("stunned", unitStunned);
+    
+    // Add nearby units
+    auto nearbyWriter = writer["nearby_units"];
+    nearbyWriter.setAsSeq();
+    
+    for (auto* bu : *_save->getUnits())
+    {
+        if (bu != target && bu != attacker && !bu->isOut() && 
+            Position::distance(bu->getPosition(), target->getPosition()) <= 10)
+        {
+            auto unitWriter = nearbyWriter.write();
+            unitWriter.write("name", bu->getName(_parentState->getGame()->getLanguage()));
+            unitWriter.write("faction", bu->getOriginalFaction());
+            unitWriter.write("distance", Position::distance(bu->getPosition(), target->getPosition()));
+            unitWriter.write("visible", std::find(target->getVisibleUnits()->begin(), 
+                                               target->getVisibleUnits()->end(), bu) != target->getVisibleUnits()->end());
+        }
+    }
+    
+    _parentState->getGame()->_streamerConnector.sendData(writer.emit().yaml);
+}
+
 /**
  * Sets the kneel reservation setting.
  * @param reserved Should we reserve an extra 4 TUs to kneel?

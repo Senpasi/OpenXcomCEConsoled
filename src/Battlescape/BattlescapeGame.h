@@ -265,6 +265,8 @@ public:
 	/// Check count of units in different state
 	BattlescapeTally tallyUnits();
 	bool convertInfected();
+	/// @brief Sends a hit notification to streamer console.
+	void sendHitNotification(BattleUnit* target, BattleUnit* attacker, bool armorPenetrated, bool unitKilled, bool unitStunned);
 	/// Sets the kneel reservation setting.
 	void setKneelReserved(bool reserved);
 	/// Checks the kneel reservation setting.
