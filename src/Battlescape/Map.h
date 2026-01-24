@@ -21,6 +21,7 @@
 #include "../Engine/Options.h"
 #include "../Engine/Collections.h"
 #include "../Mod/MapData.h"
+#include "../Interface/TextBanner.h"
 #include "Position.h"
 #include "Particle.h"
 #include <vector>
@@ -103,6 +104,7 @@ private:
 	bool _previewSettingArrows, _previewSettingTu, _previewSettingEnergy;
 	Text *_txtAccuracy;
 	SurfaceSet *_projectileSet;
+    std::vector<TextBanner*> _banners;
 
 	void drawUnit(UnitSprite &unitSprite, Tile *unitTile, Tile *currTile, Position tileScreenPosition, bool topLayer, BattleUnit* movingUnit = nullptr);
 	void drawTerrain(Surface *surface);
@@ -217,6 +219,8 @@ public:
 	void enableObstacles();
 	/// Disables obstacle markers.
 	void disableObstacles();
+	/// Show unit speech
+	void showSpeech(const std::string& text, BattleUnit* unit, bool fade = true);
 };
 
 }

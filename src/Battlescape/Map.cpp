@@ -108,7 +108,8 @@ Map::Map(Game *game, int width, int height, int x, int y, int visibleMapHeight) 
 	_game(game), _isTFTD(false), _arrow(0), _anyIndicator(false), _isAltPressed(false), _isCtrlPressed(false),
 	_selectorX(0), _selectorY(0), _mouseX(0), _mouseY(0), _cursorType(CT_NORMAL), _cursorSize(1), _animFrame(0),
 	_projectile(0), _followProjectile(true), _projectileInFOV(false), _explosionInFOV(false), _launch(false), _visibleMapHeight(visibleMapHeight),
-	_unitDying(false), _smoothingEngaged(false), _flashScreen(false), _bgColor(15), _projectileSet(0), _showObstacles(false), _showInfoOnCursor(false)
+	_unitDying(false), _smoothingEngaged(false), _flashScreen(false), _bgColor(15), _projectileSet(0), _showObstacles(false), _showInfoOnCursor(false),
+    _banners()
 {
 	// TODO: extract to a better place later
 	for (const auto& pair : Options::mods)
@@ -252,6 +253,10 @@ Map::~Map()
 	delete _message;
 	delete _camera;
 	delete _txtAccuracy;
+	for (auto* banner : _banners)
+	{
+		delete banner;
+	}
 }
 
 /**
@@ -300,6 +305,20 @@ void Map::think()
 	_scrollKeyTimer->think(0, this);
 	_fadeTimer->think(0, this);
 	_obstacleTimer->think(0, this);
+
+	for (auto it = _banners.begin(); it != _banners.end(); )
+	{
+		(*it)->think();
+		if ((*it)->isExpired())
+		{
+			delete *it;
+			it = _banners.erase(it);
+		}
+		else
+		{
+			++it;
+		}
+	}
 }
 
 /**
@@ -363,6 +382,13 @@ void Map::draw()
 	else
 	{
 		_message->blit(this->getSurface());
+	}
+
+	for (auto* banner : _banners)
+	{
+		auto offset = this->calculateWalkingOffset(banner->getUnit());
+		banner->draw(this, _camera, _game, offset.ScreenOffset.x, offset.ScreenOffset.y);
+		banner->getSprite()->blit(this->getSurface());
 	}
 }
 
@@ -2606,6 +2632,19 @@ void Map::disableObstacles(void)
 	{
 		_obstacleTimer->stop();
 	}
+}
+
+/**
+ * Show units speeches
+ */
+void Map::showSpeech(const std::string& text, BattleUnit* unit, bool fade)
+{
+	if (!unit)
+		return;
+
+	TextBanner* banner = new TextBanner(text, unit, fade);
+	banner->getSprite()->setPalette(_game->getScreen()->getPalette());
+	_banners.push_back(banner);
 }
 
 }

@@ -52,7 +52,8 @@ std::string EventsList::processEvent(const std::string& yamlString)
 		"ufo_and_bases_detect_all",
 		"ask_info",
 		"force_bug_hunt",
-		"soldier_transformation"
+		"soldier_transformation",
+		"soldier_message"
 	};
 
 	if (eventId == "increased_damage_5min")

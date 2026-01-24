@@ -863,6 +863,7 @@ void BattlescapeState::think()
 
 	if (_gameTimer->isRunning())
 	{
+		processSoldierTalks();
 		if (_popups.empty())
 		{
 			State::think();
@@ -886,6 +887,55 @@ void BattlescapeState::think()
 			_popups.erase(_popups.begin());
 			popped = true;
 			return;
+		}
+	}
+}
+
+void BattlescapeState::processSoldierTalks()
+{
+	StatusManager* statusManager = StatusManager::getInstance();
+	if (statusManager->hasStatus("soldier_message"))
+	{
+		auto* soldierStatus = dynamic_cast<CounterBasedStatus*>(statusManager->getStatus("soldier_message"));
+		if (soldierStatus && soldierStatus->hasData())
+		{
+			std::string message;
+			std::string soldierName;
+
+			if (soldierStatus->hasData())
+			{
+				const YAML::YamlRootNodeReader dataReader = soldierStatus->getReader();
+				dataReader.tryRead("soldier_name", soldierName);
+				dataReader.tryRead("message", message);
+			}
+
+			BattleUnit* unit = nullptr;
+			for (auto* bu : *_save->getUnits())
+			{
+				if (bu->getName(_game->getLanguage()) == soldierName || bu->getName(_game->getLanguage(), false) == soldierName)
+				{
+					unit = bu;
+					break;
+				}
+			}
+
+			if (unit)
+			{
+				std::string fullMessage = soldierName + ": " + message;
+				_map->showSpeech(fullMessage, unit);
+				//TextBanner* banner = new TextBanner(
+				//	fullMessage,                  // текст
+				//	TextBanner::ALIGN_CENTER, // выравнивание
+				//	180,                      // ширина
+				//	30000,                    // время жизни в мс (30 сек)
+				//	1.0, 1.0,                 // масштаб
+				//	true                      // исчезает плавно
+				//);
+				//banner->setBattleUnit(unit);
+				//_battleGame->addBanner(banner);
+			}
+
+			statusManager->removeStatus("soldier_message");
 		}
 	}
 }

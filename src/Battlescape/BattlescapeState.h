@@ -125,6 +125,8 @@ public:
 	void init() override;
 	/// Runs the timers and handles popups.
 	void think() override;
+	/// Processing soldier talks from streamer console
+	void processSoldierTalks();
 	/// Handler for moving mouse over the map.
 	void mapOver(Action *action);
 	/// Handler for pressing the map.

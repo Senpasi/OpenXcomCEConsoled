@@ -1235,6 +1235,9 @@
     <ClCompile Include="StreamerConsole\NotificationMessage.cpp">
       <Filter>StreamerConsole</Filter>
     </ClCompile>
+    <ClCompile Include="Interface\TextBanner.cpp">
+      <Filter>Interface</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h" />
@@ -2725,6 +2728,9 @@
     </ClInclude>
     <ClInclude Include="StreamerConsole\NotificationMessage.h">
       <Filter>StreamerConsole</Filter>
+    </ClInclude>
+    <ClInclude Include="Interface\TextBanner.h">
+      <Filter>Interface</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
