@@ -470,6 +470,7 @@ en-US:
   notifyWhenRefueled: "Notify when refueled?"
   autoPatrol: "Auto-patrol?"
   undetectable: "Undetectable?"
+  patrolWithoutFuel: "Patrol for free?"
   keepCraftAfterFailedMission: "Paratroopers?"
   _calculatedValues: "Calculated values"
   _maxRange: "Maximum range"
