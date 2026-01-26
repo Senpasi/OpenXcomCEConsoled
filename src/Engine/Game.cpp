@@ -30,7 +30,9 @@
 #include "Logger.h"
 #include "../Interface/Cursor.h"
 #include "../Interface/FpsCounter.h"
+#include "../Engine/LocalizedText.h"
 #include "../Mod/Mod.h"
+#include "../Mod/Armor.h"
 #include "../Savegame/SavedGame.h"
 #include "../Savegame/Base.h"
 #include "../Savegame/SavedBattleGame.h"
@@ -457,6 +459,18 @@ void Game::sendGameContext(bool force)
 					auto soldierWriter = soldiersWriter.write();
 					soldierWriter.setAsMap();
 					soldierWriter.write("name", soldier_item->getName());
+					auto* armor = soldier_item->getArmor();
+					if (armor)
+					{
+						auto armorWriter = soldierWriter["armor"];
+						armorWriter.setAsMap();
+						armorWriter.write("name", tr(armor->getType()));
+						armorWriter.write("front_armor", armor->getFrontArmor());
+						armorWriter.write("left_armor", armor->getLeftSideArmor());
+						armorWriter.write("right_armor", armor->getRightSideArmor());
+						armorWriter.write("rear_armor", armor->getRearArmor());
+						armorWriter.write("under_armor", armor->getUnderArmor());
+					}
 				}
 			}
 			for (auto* soldier_item : *_save->getDeadSoldiers())
@@ -472,6 +486,17 @@ void Game::sendGameContext(bool force)
 	{
 		Log(LOG_ERROR) << e.what();
 	}
+}
+
+/**
+ * Get the localized text for dictionary key @a id.
+ * This function forwards the call to Language::getString(const std::string &).
+ * @param id The dictionary key to search for.
+ * @return The localized text.
+ */
+LocalizedText Game::tr(const std::string& id) const
+{
+	return getLanguage()->getString(id);
 }
 
 /**

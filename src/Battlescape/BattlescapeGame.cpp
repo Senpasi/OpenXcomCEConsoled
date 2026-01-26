@@ -3143,7 +3143,8 @@ void BattlescapeGame::sendHitNotification(BattleUnit* target, BattleUnit* attack
         if (bu != target && bu != attacker && !bu->isOut() && 
             Position::distance(bu->getPosition(), target->getPosition()) <= 10)
         {
-            auto unitWriter = nearbyWriter.write();
+			auto unitWriter = nearbyWriter.write();
+			unitWriter.setAsMap();
             unitWriter.write("name", bu->getName(_parentState->getGame()->getLanguage()));
             unitWriter.write("faction", bu->getOriginalFaction());
             unitWriter.write("distance", Position::distance(bu->getPosition(), target->getPosition()));
@@ -3152,6 +3153,67 @@ void BattlescapeGame::sendHitNotification(BattleUnit* target, BattleUnit* attack
         }
     }
     
+    _parentState->getGame()->_streamerConnector.sendData(writer.emit().yaml);
+}
+
+/**
+ * Sends a notification when an enemy unit is detected.
+ * @param observer The unit that detected the enemy.
+ * @param detected The unit that was detected.
+ */
+void BattlescapeGame::sendEnemyDetectedNotification(BattleUnit* observer, BattleUnit* detected)
+{
+    if (!_parentState || !_parentState->getGame() || !observer || !detected)
+        return;
+
+    YAML::YamlRootNodeWriter writer;
+    writer.setAsMap();
+    writer.setBlockStyle();
+    writer.write("action", "context");
+    writer.write("event", "enemy_detected");
+
+    auto observerWriter = writer["observer"];
+    observerWriter.setAsMap();
+    observerWriter.write("name", observer->getName(_parentState->getGame()->getLanguage()));
+    observerWriter.write("id", observer->getId());
+	observerWriter.write("faction", observer->getOriginalFaction());
+	std::ostringstream observerPosition;
+	observerPosition << observer->getPosition().x << "x" << observer->getPosition().y << "x" << observer->getPosition().z;
+	observerWriter.write("position", observerPosition.str());
+
+    auto detectedWriter = writer["detected"];
+    detectedWriter.setAsMap();
+    detectedWriter.write("name", detected->getName(_parentState->getGame()->getLanguage()));
+    detectedWriter.write("id", detected->getId());
+    detectedWriter.write("faction", detected->getOriginalFaction());
+	std::ostringstream detectedPosition;
+	detectedPosition << detected->getPosition().x << "x" << detected->getPosition().y << "x" << detected->getPosition().z;
+	detectedWriter.write("position", detectedPosition.str());
+	detectedWriter.write("distance", Position::distance(observer->getPosition(), detected->getPosition()));
+    detectedWriter.write("health", detected->getHealth());
+    detectedWriter.write("status", detected->getStatus());
+
+    // Add other visible units to provide context
+    auto visibleWriter = writer["visible_units"];
+    visibleWriter.setAsSeq();
+
+    for (auto* bu : *_save->getUnits())
+    {
+        if (bu != observer && bu != detected && !bu->isOut() &&
+            std::find(observer->getVisibleUnits()->begin(),
+                     observer->getVisibleUnits()->end(), bu) != observer->getVisibleUnits()->end())
+        {
+			auto unitWriter = visibleWriter.write();
+			unitWriter.setAsMap();
+            unitWriter.write("name", bu->getName(_parentState->getGame()->getLanguage()));
+            unitWriter.write("faction", bu->getOriginalFaction());
+			unitWriter.write("distance", Position::distance(observer->getPosition(), bu->getPosition()));
+			std::ostringstream unitPosition;
+			unitPosition << observer->getPosition().x << "x" << observer->getPosition().y << "x" << observer->getPosition().z;
+			unitWriter.write("position", unitPosition.str());
+        }
+    }
+
     _parentState->getGame()->_streamerConnector.sendData(writer.emit().yaml);
 }
 

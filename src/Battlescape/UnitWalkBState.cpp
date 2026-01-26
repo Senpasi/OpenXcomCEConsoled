@@ -432,6 +432,8 @@ void UnitWalkBState::think()
 			if (Options::traceAI) { Log(LOG_INFO) << "Egads! A turn reveals new units! I must pause!"; }
 			_unit->setHiding(false); // not hidden, are we...
 			_unit->abortTurn(); //revert to a standing state.
+			if (_unit->getUnitsSpottedThisTurn().size()>0)
+				_parent->sendEnemyDetectedNotification(_unit, _unit->getUnitsSpottedThisTurn().back());
 			return cancelCurentMove();
 		}
 	}

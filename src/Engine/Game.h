@@ -177,6 +177,7 @@ public:
 	/// Gets the NotificationMessage for streamer console.
 	NotificationMessage *getNotificationMessage() const { return _notificationMessage; }
 	void sendGameContext(bool force = false);
+	LocalizedText tr(const std::string& id) const;
 };
 
 }
