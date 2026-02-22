@@ -527,6 +527,8 @@ public:
 	void setArmor(int armor, UnitSide side);
 	/// Get armor value.
 	int getArmor(UnitSide side) const;
+	/// Set max armor value.
+	void setMaxArmor(int armor, UnitSide side);
 	/// Get max armor value.
 	int getMaxArmor(UnitSide side) const;
 	/// Set fatal wound amount of a body part
