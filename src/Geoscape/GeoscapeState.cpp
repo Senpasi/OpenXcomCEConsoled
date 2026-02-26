@@ -3920,6 +3920,12 @@ void GeoscapeState::handleBaseDefense(Base *base, Ufo *ufo)
 			// let the player know that some facilities were destroyed, but the base survived
 			popup(new BaseDestroyedState(base, ufo, true, true));
 		}
+
+		// continue mayhem?
+		if (ufo->getRules()->getMissileStopChance() > 0 && RNG::percent(ufo->getRules()->getMissileStopChance()))
+		{
+			ufo->getMission()->setInterrupted(true);
+		}
 	}
 	else if (base->getAvailableSoldiers(true, true) > 0 || !base->getVehicles()->empty())
 	{
