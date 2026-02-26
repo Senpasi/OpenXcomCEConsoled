@@ -232,6 +232,8 @@ void UnitWalkBState::think()
 			}
 			if (unitSpotted)
 			{
+				if (_unit->getUnitsSpottedThisTurn().size()>0 && _unit->getFaction() == FACTION_PLAYER)
+					_parent->sendEnemyDetectedNotification(_unit, _unit->getUnitsSpottedThisTurn(), _unit->getUnitsSpottedThisTurn().size() - _numUnitsSpotted);
 				return cancelCurentMove();
 			}
 			// check for reaction fire
@@ -432,8 +434,8 @@ void UnitWalkBState::think()
 			if (Options::traceAI) { Log(LOG_INFO) << "Egads! A turn reveals new units! I must pause!"; }
 			_unit->setHiding(false); // not hidden, are we...
 			_unit->abortTurn(); //revert to a standing state.
-			if (_unit->getUnitsSpottedThisTurn().size()>0)
-				_parent->sendEnemyDetectedNotification(_unit, _unit->getUnitsSpottedThisTurn().back());
+			if (_unit->getUnitsSpottedThisTurn().size()>0 && _unit->getFaction() == FACTION_PLAYER)
+				_parent->sendEnemyDetectedNotification(_unit, _unit->getUnitsSpottedThisTurn(), _unit->getUnitsSpottedThisTurn().size() - _numUnitsSpotted);
 			return cancelCurentMove();
 		}
 	}

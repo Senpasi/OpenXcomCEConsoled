@@ -37,15 +37,16 @@
 #include "Pathfinding.h"
 #include "../Mod/AlienDeployment.h"
 #include "../Engine/Game.h"
-#include "../Engine/Language.h"
 #include "../Engine/Sound.h"
 #include "../Mod/Mod.h"
+#include "../Mod/ArticleDefinition.h"
 #include "../Interface/Cursor.h"
 #include "../Savegame/SavedGame.h"
 #include "../Savegame/SavedBattleGame.h"
 #include "../Savegame/Tile.h"
 #include "../Savegame/BattleUnit.h"
 #include "../Savegame/BattleItem.h"
+#include "../Savegame/Ufo.h"
 #include "../Mod/RuleItem.h"
 #include "../Mod/RuleInventory.h"
 #include "../Mod/RuleSoldier.h"
@@ -3101,10 +3102,168 @@ bool BattlescapeGame::convertInfected()
 	return retVal;
 }
 
-void BattlescapeGame::sendHitNotification(BattleUnit* target, BattleUnit* attacker, bool armorPenetrated, bool unitKilled, bool unitStunned)
+
+/**
+ * Writes the description text from ufopedia to the YAML streamer.
+ * @param writer the YAML streamer
+ * @param mission_name the mission identifier
+ * @param lang the language
+ * @param key the key to use for the description
+*/
+void BattlescapeGame::writeMissionDescription(YAML::YamlNodeWriter& writer, const std::string &mission_name, Language* lang, const char* key)
+{
+	AlienDeployment *deployment = _parentState->getGame()->getMod()->getDeployment(mission_name);
+	if (mission_name == "STR_BASE_DEFENSE")
+	{
+		AlienDeployment* customDeployment = _parentState->getGame()->getMod()->getDeployment(_save->getAlienCustomDeploy());
+		if (customDeployment && !customDeployment->getBriefingData().desc.empty())
+		{
+			deployment = customDeployment;
+		}
+	}
+	else
+	{
+		const Craft* craft = _save->getCraftForPreview();
+		if (!deployment && craft)
+		{
+			Ufo* ufo = dynamic_cast <Ufo*> (craft->getDestination());
+			if (ufo) // landing site or crash site.
+			{
+				std::string ufoMissionName = ufo->getRules()->getType();
+				if (!_save->getAlienCustomMission().empty())
+				{
+					// fake underwater UFO
+					ufoMissionName = _save->getAlienCustomMission();
+				}
+				deployment = _parentState->getGame()->getMod()->getDeployment(ufoMissionName);
+			}
+		}
+	}
+
+	std::string desc = mission_name;
+	if (deployment)
+	{
+		BriefingData data = deployment->getBriefingData();
+		if (!data.desc.empty())
+		{
+			desc = data.desc;
+		}
+		else
+		{
+			desc = mission_name + "_BRIEFING";
+		}
+	}
+	else
+	{
+		desc = mission_name + "_BRIEFING";
+	}
+
+	writer.write(key, lang->getString(desc));
+}
+
+
+/**
+ * Writes the description text from ufopedia to the YAML streamer.
+ * @param writer the YAML streamer
+ * @param article_name the article identifier
+ * @param lang the language
+ * @param key the key to use for the description
+*/
+void BattlescapeGame::writeUfopediaDescription(YAML::YamlNodeWriter& writer, const std::string &article_name, Language* lang, const char* key)
+{
+	auto* article = _save->getMod()->getUfopaediaArticle(article_name);
+	if (article && article->getNumberOfPages())
+	{
+		writer.write(key, lang->getString(article->getTextForPage(0)));
+	}
+}
+
+/**
+ * Writes the unit info to the YAML streamer.
+ * @param writer the YAML streamer
+ * @param unit the unit to write
+ * @param lang the language
+*/
+void BattlescapeGame::writeUnitInfo(YAML::YamlNodeWriter& writer, BattleUnit* unit, Language* lang)
+{
+    if (!unit) return;
+
+    writer.write("name", unit->getName(lang));
+    writer.write("id", unit->getId());
+	switch (unit->getOriginalFaction())
+	{
+	case FACTION_PLAYER:
+		writer.write("faction", "PLAYER");
+		break;
+	case FACTION_HOSTILE:
+		writer.write("faction", "HOSTILE");
+		break;
+	case FACTION_NEUTRAL:
+		writer.write("faction", "NEUTRAL");
+		break;
+	default:
+		break;
+	}
+	if (unit->getOriginalFaction() != unit->getFaction())
+	{
+		writer.write("under_control", true);
+	}
+	writer.write("type", lang->getString(unit->getType()));
+	auto* baseUnit = unit->getUnitRules();
+	if (baseUnit)
+	{
+		writer.write("base_type", lang->getString(baseUnit->getType()));
+		writer.write("race", lang->getString(baseUnit->getRace()));
+	}
+
+    std::ostringstream position;
+    auto pos = unit->getPosition();
+    position << pos.x << "x" << pos.y << "x" << pos.z;
+    writer.write("position", position.str());
+
+    writer.write("direction", unit->getDirection());
+    writer.write("health", unit->getHealth());
+    writer.write("base_health", unit->getBaseStats()->health);
+    writer.write("status", unit->getStatus());
+
+    const Armor* armor = unit->getArmor();
+    if (armor)
+	{
+		writer.write("armor", lang->getString(armor->getType()));
+		writeUfopediaDescription(writer, armor->getUfopediaType(), lang, "armor_description");
+    }
+	auto* leftWeapon = unit->getLeftHandWeapon();
+	if (leftWeapon)
+	{
+		writer.write("weapon_left_hand", lang->getString(leftWeapon->getRules()->getUfopediaType()));
+		if (leftWeapon->getRules()->isMeleeTypeSet())
+			writer.write("weapon_left_is_melee", true);
+		writeUfopediaDescription(writer, leftWeapon->getRules()->getUfopediaType(), lang, "weapon_left_hand_description");
+	}
+	auto* rightWeapon = unit->getRightHandWeapon();
+	if (rightWeapon)
+	{
+		writer.write("weapon_right_hand", lang->getString(rightWeapon->getRules()->getUfopediaType()));
+		if (rightWeapon->getRules()->isMeleeTypeSet())
+			writer.write("weapon_right_is_melee", true);
+		writeUfopediaDescription(writer, rightWeapon->getRules()->getUfopediaType(), lang, "weapon_right_hand_description");
+	}
+}
+
+/*
+ * Send a hit notification to the streamer console
+ * @param target the unit that was hit
+ * @param attack the attack that hit the unit
+ * @param armorPenetrated whether the attack penetrated the target's armor
+ * @param unitKilled whether the unit was killed by the attack
+ * @param unitStunned whether the unit was stunned by the attack
+*/
+void BattlescapeGame::sendHitNotification(BattleUnit* target, BattleActionAttack attack, bool armorPenetrated, bool unitKilled, bool unitStunned)
 {
     if (!_parentState || !_parentState->getGame())
         return;
+
+	Language* lang = _parentState->getGame()->getLanguage();
 
     YAML::YamlRootNodeWriter writer;
     writer.setAsMap();
@@ -3114,21 +3273,27 @@ void BattlescapeGame::sendHitNotification(BattleUnit* target, BattleUnit* attack
     
     auto targetWriter = writer["target"];
     targetWriter.setAsMap();
-    targetWriter.write("name", target->getName(_parentState->getGame()->getLanguage()));
-    targetWriter.write("id", target->getId());
-    targetWriter.write("faction", target->getOriginalFaction());
-    targetWriter.write("health", target->getHealth());
-    targetWriter.write("stun", target->getStunlevel());
-    targetWriter.write("status", target->getStatus());
+    writeUnitInfo(targetWriter, target, lang);
     
-    if (attacker)
+    if (attack.attacker)
     {
         auto attackerWriter = writer["attacker"];
         attackerWriter.setAsMap();
-        attackerWriter.write("name", attacker->getName(_parentState->getGame()->getLanguage()));
-        attackerWriter.write("id", attacker->getId());
-        attackerWriter.write("faction", attacker->getOriginalFaction());
+		writeUnitInfo(attackerWriter, attack.attacker, lang);
+		attackerWriter.write("distance_from_target", Position::distance(attack.attacker->getPosition(), target->getPosition()));
     }
+	if (attack.weapon_item)
+	{
+		writer.write("weapon_item", lang->getString(attack.weapon_item->getRules()->getType()));
+		if (attack.weapon_item->getRules()->isMeleeTypeSet())
+			writer.write("weapon_item_is_melee", true);
+		writeUfopediaDescription(writer, attack.weapon_item->getRules()->getUfopediaType(), lang, "weapon_item_description");
+	}
+	if (attack.damage_item)
+	{
+		writer.write("damage_item", lang->getString(attack.damage_item->getRules()->getType()));
+		writeUfopediaDescription(writer, attack.damage_item->getRules()->getUfopediaType(), lang, "damage_item_description");
+	}
     
     writer.write("armor_penetrated", armorPenetrated);
     writer.write("killed", unitKilled);
@@ -3140,19 +3305,25 @@ void BattlescapeGame::sendHitNotification(BattleUnit* target, BattleUnit* attack
     
     for (auto* bu : *_save->getUnits())
     {
-        if (bu != target && bu != attacker && !bu->isOut() && 
+		if (bu != target && bu != attack.attacker && !bu->isOut() && 
             Position::distance(bu->getPosition(), target->getPosition()) <= 10)
         {
 			auto unitWriter = nearbyWriter.write();
 			unitWriter.setAsMap();
-            unitWriter.write("name", bu->getName(_parentState->getGame()->getLanguage()));
-            unitWriter.write("faction", bu->getOriginalFaction());
-            unitWriter.write("distance", Position::distance(bu->getPosition(), target->getPosition()));
+            writeUnitInfo(unitWriter, bu, lang);
             unitWriter.write("visible", std::find(target->getVisibleUnits()->begin(), 
                                                target->getVisibleUnits()->end(), bu) != target->getVisibleUnits()->end());
+			if (attack.attacker)
+			{
+				unitWriter.write("distance_from_attacker", Position::distance(bu->getPosition(), attack.attacker->getPosition()));
+			}
+			unitWriter.write("distance_from_target", Position::distance(bu->getPosition(), target->getPosition()));
         }
-    }
-    
+	}
+
+	writer.write("mission", lang->getString(_save->getMissionType()));
+	writeMissionDescription(writer, _save->getMissionType(), lang, "briefing");
+
     _parentState->getGame()->_streamerConnector.sendData(writer.emit().yaml);
 }
 
@@ -3161,10 +3332,12 @@ void BattlescapeGame::sendHitNotification(BattleUnit* target, BattleUnit* attack
  * @param observer The unit that detected the enemy.
  * @param detected The unit that was detected.
  */
-void BattlescapeGame::sendEnemyDetectedNotification(BattleUnit* observer, BattleUnit* detected)
+void BattlescapeGame::sendEnemyDetectedNotification(BattleUnit* observer, const std::vector<BattleUnit*> &spottedUnits, int numUnitsSpotted)
 {
-    if (!_parentState || !_parentState->getGame() || !observer || !detected)
+    if (!_parentState || !_parentState->getGame() || !observer || !spottedUnits.size())
         return;
+
+	Language* lang = _parentState->getGame()->getLanguage();
 
     YAML::YamlRootNodeWriter writer;
     writer.setAsMap();
@@ -3174,45 +3347,69 @@ void BattlescapeGame::sendEnemyDetectedNotification(BattleUnit* observer, Battle
 
     auto observerWriter = writer["observer"];
     observerWriter.setAsMap();
-    observerWriter.write("name", observer->getName(_parentState->getGame()->getLanguage()));
-    observerWriter.write("id", observer->getId());
-	observerWriter.write("faction", observer->getOriginalFaction());
-	std::ostringstream observerPosition;
-	observerPosition << observer->getPosition().x << "x" << observer->getPosition().y << "x" << observer->getPosition().z;
-	observerWriter.write("position", observerPosition.str());
+    writeUnitInfo(observerWriter, observer, lang);
 
     auto detectedWriter = writer["detected"];
-    detectedWriter.setAsMap();
-    detectedWriter.write("name", detected->getName(_parentState->getGame()->getLanguage()));
-    detectedWriter.write("id", detected->getId());
-    detectedWriter.write("faction", detected->getOriginalFaction());
-	std::ostringstream detectedPosition;
-	detectedPosition << detected->getPosition().x << "x" << detected->getPosition().y << "x" << detected->getPosition().z;
-	detectedWriter.write("position", detectedPosition.str());
-	detectedWriter.write("distance", Position::distance(observer->getPosition(), detected->getPosition()));
-    detectedWriter.write("health", detected->getHealth());
-    detectedWriter.write("status", detected->getStatus());
+	detectedWriter.setAsSeq();
+	for (auto* detected : spottedUnits)
+	{
+		auto unitWriter = detectedWriter.write();
+		unitWriter.setAsMap();
+		writeUnitInfo(unitWriter, detected, lang);
+		unitWriter.write("distance", Position::distance(observer->getPosition(), detected->getPosition()));
+		writeUfopediaDescription(unitWriter, detected->getType(), lang, "description");
+	}
 
-    // Add other visible units to provide context
-    auto visibleWriter = writer["visible_units"];
+    auto visibleWriter = writer["visible_by_observer_units"];
     visibleWriter.setAsSeq();
 
     for (auto* bu : *_save->getUnits())
     {
-        if (bu != observer && bu != detected && !bu->isOut() &&
-            std::find(observer->getVisibleUnits()->begin(),
-                     observer->getVisibleUnits()->end(), bu) != observer->getVisibleUnits()->end())
+        if (bu == observer || bu->isOut())
+            continue;
+
+        if (std::find(observer->getVisibleUnits()->begin(), observer->getVisibleUnits()->end(), bu) != observer->getVisibleUnits()->end())
         {
-			auto unitWriter = visibleWriter.write();
-			unitWriter.setAsMap();
-            unitWriter.write("name", bu->getName(_parentState->getGame()->getLanguage()));
-            unitWriter.write("faction", bu->getOriginalFaction());
-			unitWriter.write("distance", Position::distance(observer->getPosition(), bu->getPosition()));
-			std::ostringstream unitPosition;
-			unitPosition << observer->getPosition().x << "x" << observer->getPosition().y << "x" << observer->getPosition().z;
-			unitWriter.write("position", unitPosition.str());
+            auto unitWriter = visibleWriter.write();
+            unitWriter.setAsMap();
+            writeUnitInfo(unitWriter, bu, lang);
+            unitWriter.write("distance_from_observer", Position::distance(observer->getPosition(), bu->getPosition()));
         }
-    }
+	}
+
+	auto nearbyWriter = writer["nearby_units"];
+	nearbyWriter.setAsSeq();
+
+	for (auto* bu : *_save->getUnits())
+	{
+        if (bu == observer || bu->isOut() ||
+            Position::distance(bu->getPosition(), observer->getPosition()) > 10)
+        {
+            continue;
+        }
+        if (std::find(spottedUnits.begin(), spottedUnits.end(), bu) != spottedUnits.end())
+        {
+            continue;
+        }
+
+        auto unitWriter = nearbyWriter.write();
+        unitWriter.setAsMap();
+        writeUnitInfo(unitWriter, bu, lang);
+        unitWriter.write("distance_from_observer", Position::distance(bu->getPosition(), observer->getPosition()));
+        bool visibleByAnyDetected = false;
+        for (auto* detected : spottedUnits)
+        {
+            if (std::find(detected->getVisibleUnits()->begin(), detected->getVisibleUnits()->end(), bu) != detected->getVisibleUnits()->end())
+            {
+                visibleByAnyDetected = true;
+                break;
+            }
+        }
+        unitWriter.write("visible_by_detected", visibleByAnyDetected);
+	}
+
+	writer.write("mission", lang->getString(_save->getMissionType()));
+	writeMissionDescription(writer, _save->getMissionType(), lang, "briefing");
 
     _parentState->getGame()->_streamerConnector.sendData(writer.emit().yaml);
 }

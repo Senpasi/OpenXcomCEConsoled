@@ -113,6 +113,8 @@ void UnitTurnBState::think()
 		_parent->getTileEngine()->calculateFOV(_unit);
 		if (_chargeTUs && _unit->getFaction() == _parent->getSave()->getSide() && _parent->getPanicHandled() && _action.type == BA_NONE && _unit->getUnitsSpottedThisTurn().size() > unitSpotted)
 		{
+			if (_unit->getUnitsSpottedThisTurn().size()>0 && _unit->getFaction() == FACTION_PLAYER)
+				_parent->sendEnemyDetectedNotification(_unit, _unit->getUnitsSpottedThisTurn(), _unit->getUnitsSpottedThisTurn().size() - unitSpotted);
 			_unit->abortTurn();
 			_parent->popState();
 		}

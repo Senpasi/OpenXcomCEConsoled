@@ -20,6 +20,7 @@
 #include "Position.h"
 #include "../Mod/RuleItem.h"
 #include "../Engine/HelperMeta.h"
+#include "../Engine/Language.h"
 #include <string>
 #include <list>
 #include <vector>
@@ -158,7 +159,11 @@ private:
 	std::vector<InfoboxOKState*> _infoboxQueue;
 	/// Shows the infoboxes in the queue (if any).
 	void showInfoBoxQueue();
-public:
+	void writeMissionDescription(YAML::YamlNodeWriter& writer, const std::string& mission_name, Language* lang, const char* key);
+	void writeUfopediaDescription(YAML::YamlNodeWriter& writer,  const std::string &article_name, Language* lang, const char* key);
+	void writeUnitInfo(YAML::YamlNodeWriter& writer, BattleUnit* unit, Language* lang);
+
+  public:
 	/// is debug mode enabled in the battlescape?
 	static bool _debugPlay;
 
@@ -266,9 +271,9 @@ public:
 	BattlescapeTally tallyUnits();
 	bool convertInfected();
 	/// Sends a hit notification to streamer console.
-	void sendHitNotification(BattleUnit* target, BattleUnit* attacker, bool armorPenetrated, bool unitKilled, bool unitStunned);
+	void sendHitNotification(BattleUnit* target, BattleActionAttack attack, bool armorPenetrated, bool unitKilled, bool unitStunned);
 	/// Sends a enemy detection notification to streamer console.
-	void sendEnemyDetectedNotification(BattleUnit* observer, BattleUnit* detected);
+	void sendEnemyDetectedNotification(BattleUnit* observer, const std::vector<BattleUnit*> &spottedUnits, int numUnitsSpotted);
 	/// Sets the kneel reservation setting.
 	void setKneelReserved(bool reserved);
 	/// Checks the kneel reservation setting.
