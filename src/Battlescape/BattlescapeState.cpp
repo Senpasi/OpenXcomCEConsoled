@@ -901,12 +901,14 @@ void BattlescapeState::processSoldierTalks()
 		{
 			std::string message;
 			std::string soldierName;
+			int delay=0;
 
 			if (soldierStatus->hasData())
 			{
 				const YAML::YamlRootNodeReader dataReader = soldierStatus->getReader();
 				dataReader.tryRead("soldier_name", soldierName);
 				dataReader.tryRead("message", message);
+				dataReader.tryRead("delay", delay);
 			}
 
 			BattleUnit* unit = nullptr;
@@ -922,7 +924,7 @@ void BattlescapeState::processSoldierTalks()
 			if (unit)
 			{
 				std::string fullMessage = soldierName + ": " + message;
-				_map->showSpeech(fullMessage, unit);
+				_map->showSpeech(fullMessage, unit, true, delay);
 				//TextBanner* banner = new TextBanner(
 				//	fullMessage,                  // текст
 				//	TextBanner::ALIGN_CENTER, // выравнивание
