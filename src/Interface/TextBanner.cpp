@@ -10,21 +10,22 @@
 namespace OpenXcom
 {
 
-TextBanner::TextBanner(const std::string& text, BattleUnit* unit, bool fade) :
+TextBanner::TextBanner(const std::string& text, BattleUnit* unit, bool fade, int delay) :
     _text(text),
     _sprite(nullptr),
-    _ttl(30000), // 30 секунд
+    _ttl(30000), // 30 seconds
     _age(0),
+    _delay(delay),
     _unit(unit),
     _fade(fade)
 {
-    _sprite = new Text(180, 16);
-    // Шрифт и язык будут инициализированы позже — в draw()
-    _sprite->setBig();
+    _sprite = new Text(320, 48);
+    _sprite->setSmall();
     _sprite->setColor(Palette::blockOffset(8));
     _sprite->setHighContrast(true);
     _sprite->setText(_text);
     _sprite->setAlign(ALIGN_CENTER);
+	_sprite->setWordWrap(true);
 }
 
 TextBanner::~TextBanner()
@@ -35,9 +36,12 @@ TextBanner::~TextBanner()
 void TextBanner::think()
 {
     if (!_unit || isExpired()) return;
+
     _age += 16; // ~60 FPS
 
-    if (_fade && _age >= _ttl - 500)
+    if (_age < _delay) return;
+
+    if (_fade && (_age - _delay) >= _ttl - 500)
     {
         int fadeAge = _age - (_ttl - 500);
         int alpha = 255 - (fadeAge * 255 / 500);
@@ -48,7 +52,8 @@ void TextBanner::think()
 
 void TextBanner::draw(Surface* surface, Camera* camera, Game* game, int offset_x, int offset_y)
 {
-    if (!_unit || isExpired()) return;
+	if (!isActive())
+		return;
 
     // Инициализируем шрифт и язык, если ещё не инициализировано
     if (!_sprite->getFont())
@@ -80,6 +85,27 @@ void TextBanner::draw(Surface* surface, Camera* camera, Game* game, int offset_x
     _sprite->setY(screenPos.y);
 
     _sprite->draw(); // draw() без аргументов — Text сам рисуется на surface
+}
+
+void TextBanner::draw(Surface* surface, Game* game, int x, int y)
+{
+	if (!isActive())
+		return;
+
+	if (!_sprite->getFont())
+	{
+		_sprite->initText(
+			game->getMod()->getFont("FONT_BIG"),
+			game->getMod()->getFont("FONT_SMALL"),
+			game->getLanguage()
+		);
+	}
+
+	int textWidth = _sprite->getTextWidth();
+	_sprite->setX(x);
+	_sprite->setY(y);
+
+	_sprite->draw();
 }
 
 }

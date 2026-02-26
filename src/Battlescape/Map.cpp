@@ -26,6 +26,7 @@
 #include "Explosion.h"
 #include "BattlescapeState.h"
 #include "Particle.h"
+#include <SDL.h>
 #include "../Mod/Mod.h"
 #include "../Engine/Action.h"
 #include "../Engine/SurfaceSet.h"
@@ -94,6 +95,23 @@
 
 namespace OpenXcom
 {
+
+static bool RectsOverlap(const SDL_Rect& a, const SDL_Rect& b)
+{
+	return !(a.x >= b.x + b.w ||
+			 b.x >= a.x + a.w ||
+			 a.y >= b.y + b.h ||
+			 b.y >= a.y + a.h);
+}
+
+template<typename To, typename From>
+To assert_narrow(From value, const char* msg)
+{
+	static_assert(std::is_integral<From>::value, "Only for integral types");
+	static_assert(std::is_integral<To>::value, "Only for integral types");
+	assert(value >= std::numeric_limits<To>::min() && value <= std::numeric_limits<To>::max() && msg);
+	return static_cast<To>(value);
+}
 
 /**
  * Sets up a map with the specified size and position.
@@ -384,11 +402,122 @@ void Map::draw()
 		_message->blit(this->getSurface());
 	}
 
-	for (auto* banner : _banners)
+	/*for (auto* banner : _banners)
 	{
 		auto offset = this->calculateWalkingOffset(banner->getUnit());
 		banner->draw(this, _camera, _game, offset.ScreenOffset.x, offset.ScreenOffset.y);
 		banner->getSprite()->blit(this->getSurface());
+	}*/
+
+	drawBanners();
+}
+
+void Map::drawBanners()
+{
+	std::vector<TextBanner*> activeBanners;
+	for (auto* banner : _banners)
+	{
+		if (banner->getUnit() && !banner->isExpired())
+		{
+			activeBanners.push_back(banner);
+		}
+	}
+
+	if (activeBanners.empty())
+		return;
+
+	struct BannerInfo
+	{
+		TextBanner* banner;
+		int baseX, baseY;     // start position
+		int width, height;
+		SDL_Rect rect;        // current position with offset
+		bool drawn;
+		BannerInfo(TextBanner* b, int x, int y, int w, int h)
+			: banner(b), baseX(x), baseY(y), width(w), height(h), drawn(false)
+		{
+			rect.x = assert_narrow<Sint16>(x, "Banner x out of range");
+			rect.y = assert_narrow<Sint16>(y, "Banner y out of range");
+			rect.w = assert_narrow<Sint16>(w, "Banner width out of range");
+			rect.h = assert_narrow<Sint16>(h, "Banner height out of range");
+		}
+	};
+
+	std::vector<BannerInfo> infos;
+
+	// 1. Start positions
+	for (auto* b : activeBanners)
+	{
+		auto* unit = b->getUnit();
+		auto* sprite = b->getSprite();
+
+		sprite->initText(_game->getMod()->getFont("FONT_BIG"), _game->getMod()->getFont("FONT_SMALL"), _game->getLanguage());
+
+		int textWidth = sprite->getTextWidth();
+		int textHeight = sprite->getHeight();
+
+		Position pos = unit->getPosition();
+		Position screenPos;
+		_camera->convertMapToScreen(pos, &screenPos);
+		screenPos.x += _camera->getMapOffset().x;
+		screenPos.y += _camera->getMapOffset().y;
+
+		auto offset = calculateWalkingOffset(unit);
+		int y = screenPos.y + offset.ScreenOffset.y - 20;
+		int x = screenPos.x - textWidth / 2;
+
+		infos.emplace_back(b, x, y, textWidth, textHeight);
+	}
+
+	// 2. Sort by Y
+	std::sort(infos.begin(), infos.end(), [](const auto& a, const auto& b) {
+		return a.baseY < b.baseY;
+	});
+
+	// 3. resolve collizions, move texts
+	for (size_t i = 0; i < infos.size(); ++i)
+	{
+		auto& info = infos[i];
+		if (!info.banner->isActive())
+			continue;
+		info.rect.x = info.baseX;
+		info.rect.y = info.baseY;
+
+		bool moved;
+		do
+		{
+			moved = false;
+			for (size_t j = 0; j < i; ++j)
+			{
+				if (!infos[j].banner->isActive())
+					continue;
+				if (RectsOverlap(info.rect, infos[j].rect))
+				{
+					int gap = 4;
+					int requiredY = infos[j].rect.y + infos[j].rect.h + gap;
+					if (requiredY > info.rect.y)
+					{
+						info.rect.y = requiredY;
+						moved = true;
+					}
+				}
+			}
+		} while (moved);
+
+		info.drawn = true;
+	}
+
+	for (auto& info : infos)
+	{
+		//auto* sprite = info.banner->getSprite();
+		//sprite->setX(info.rect.x);
+		//sprite->setY(info.rect.y);
+		//sprite->draw();
+		//sprite->blit(this->getSurface());
+		if (!info.banner->isActive())
+			continue;
+		info.banner->draw(this, _game, info.rect.x, info.rect.y);
+		info.banner->getSprite()->blit(this->getSurface());
 	}
 }
 
@@ -2648,12 +2777,33 @@ void Map::disableObstacles(void)
 /**
  * Show units speeches
  */
-void Map::showSpeech(const std::string& text, BattleUnit* unit, bool fade)
+void Map::showSpeech(const std::string& text, BattleUnit* unit, bool fade, int delay)
 {
 	if (!unit)
 		return;
 
-	TextBanner* banner = new TextBanner(text, unit, fade);
+	TextBanner* latestActiveBanner = nullptr;
+	for (auto* banner : _banners)
+	{
+		if (banner->getUnit() == unit && !banner->isExpired())
+		{
+			if (!latestActiveBanner || banner->getAge() > latestActiveBanner->getAge())
+			{
+				latestActiveBanner = banner;
+			}
+		}
+	}
+
+	if (latestActiveBanner)
+	{
+		int remainingTime = latestActiveBanner->getTtl() - latestActiveBanner->getAge();
+		if (remainingTime > 0)
+		{
+			delay += remainingTime;
+		}
+	}
+
+	TextBanner* banner = new TextBanner(text, unit, fade, delay);
 	banner->getSprite()->setPalette(_game->getScreen()->getPalette());
 	_banners.push_back(banner);
 }

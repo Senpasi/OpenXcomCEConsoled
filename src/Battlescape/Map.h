@@ -106,6 +106,7 @@ private:
 	SurfaceSet *_projectileSet;
     std::vector<TextBanner*> _banners;
 
+	void drawBanners();
 	void drawUnit(UnitSprite &unitSprite, Tile *unitTile, Tile *currTile, Position tileScreenPosition, bool topLayer, BattleUnit* movingUnit = nullptr);
 	void drawTerrain(Surface *surface);
 	int getTerrainLevel(const Position& pos, int size) const;
@@ -220,7 +221,7 @@ public:
 	/// Disables obstacle markers.
 	void disableObstacles();
 	/// Show unit speech
-	void showSpeech(const std::string& text, BattleUnit* unit, bool fade = true);
+	void showSpeech(const std::string& text, BattleUnit* unit, bool fade = true, int delay=0);
 };
 
 }
