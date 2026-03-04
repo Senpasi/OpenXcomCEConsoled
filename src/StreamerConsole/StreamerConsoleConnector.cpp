@@ -12,6 +12,7 @@ static const wchar_t* PIPE_NAME = L"\\\\.\\pipe\\game-event-pipe";
 static const wchar_t* PIPE_NAME_WRITE = L"\\\\.\\pipe\\game-event-pipe-response";
 static const size_t MAX_SEND_QUEUE_SIZE = 100;
 static const size_t MAX_RECEIVE_QUEUE_SIZE = 100;
+static bool pipeErrorReported = false;
 
 StreamerConsoleConnector::StreamerConsoleConnector()
 	: stopFlag_(false), stopEvent_(nullptr)
@@ -212,7 +213,11 @@ void StreamerConsoleConnector::processWrite()
 			DWORD err = GetLastError();
 			if (err != ERROR_PIPE_BUSY) // busy - try again
 			{
-				std::cerr << "Failed send to pipe, error " << err << std::endl;
+				if (!pipeErrorReported)
+				{
+					std::cerr << "Failed send to pipe, error " << err << std::endl;
+					pipeErrorReported = true;
+				}
 				continue;
 			}
 			std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -256,6 +261,7 @@ void StreamerConsoleConnector::processWrite()
 
 		CloseHandle(writeOverlapped.hEvent);
 		CloseHandle(hPipe);
+		pipeErrorReported = false;
 	}
 }
 
