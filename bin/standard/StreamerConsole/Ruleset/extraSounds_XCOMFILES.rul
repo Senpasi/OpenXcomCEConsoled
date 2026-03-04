@@ -1,0 +1,4 @@
+extraSounds:
+  - type: BATTLE.CAT
+    files:
+      109: Resources/Weapons_Compilation/WeaponSounds/ClubHit.wav

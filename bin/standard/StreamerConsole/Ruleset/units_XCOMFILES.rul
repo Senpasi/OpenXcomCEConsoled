@@ -27,4 +27,4 @@
     liveAlien: STR_MEGAZOMBIE_BIG_JOE
     showFullNameInAlienInventory: 1
     builtInWeaponSets:
-      - - STR_ZOMBIE_WEAPON
+      - - STR_MEGAZOMBIE_BIG_JOE_WEAPON

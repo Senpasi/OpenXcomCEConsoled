@@ -1,0 +1,4 @@
+extraSprites:
+  - type: BIGOBS.PCK
+    files:
+      547: Resources/Weapons_Compilation/NaturalWeapons/bigob_ZombieAttack.png
