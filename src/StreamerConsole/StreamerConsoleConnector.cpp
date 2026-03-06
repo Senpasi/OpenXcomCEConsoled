@@ -36,6 +36,7 @@ void StreamerConsoleConnector::start()
 {
 	readThread_ = std::thread(&StreamerConsoleConnector::processRead, this);
 	writeThread_ = std::thread(&StreamerConsoleConnector::processWrite, this);
+	monitorThread_ = std::thread(&StreamerConsoleConnector::monitorConnection, this);
 }
 
 void StreamerConsoleConnector::stop()
@@ -56,6 +57,10 @@ void StreamerConsoleConnector::stop()
 	if (writeThread_.joinable())
 	{
 		writeThread_.join();
+	}
+	if (monitorThread_.joinable())
+	{
+		monitorThread_.join();
 	}
 }
 
@@ -288,4 +293,27 @@ void StreamerConsoleConnector::sendData(const std::string& data)
 	}
 	cvSend_.notify_one();
 }
+
+void StreamerConsoleConnector::monitorConnection()
+{
+    while (!stopFlag_)
+    {
+        HANDLE hPipe = CreateFileW(
+            PIPE_NAME_WRITE,
+            GENERIC_WRITE,
+            0,
+            nullptr,
+            OPEN_EXISTING,
+            0, // synchronous mode — easier to check
+            nullptr);
+
+        const bool connected = (hPipe != INVALID_HANDLE_VALUE);
+        CloseHandle(hPipe);
+
+        consoleConnected_.store(connected, std::memory_order_relaxed);
+
+        std::this_thread::sleep_for(std::chrono::seconds(60));
+    }
+}
+
 }

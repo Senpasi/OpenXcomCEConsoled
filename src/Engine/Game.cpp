@@ -443,7 +443,7 @@ void Game::sendGameContext(bool force)
 
 		_lastSendTime = now;
 
-		if (_save)
+		if (_save && _streamerConnector.isConnected())
 		{
 			YAML::YamlRootNodeWriter writer;
 			writer.setAsMap();

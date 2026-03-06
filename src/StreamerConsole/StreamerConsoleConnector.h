@@ -47,6 +47,8 @@ class StreamerConsoleConnector
 	std::queue<std::string> sendDataQueue_;
 	std::thread readThread_;
 	std::thread writeThread_;
+	std::thread monitorThread_;
+    std::atomic<bool> consoleConnected_{false};
 
 	void processRead();
 	void processWrite();
@@ -59,6 +61,8 @@ class StreamerConsoleConnector
 	void sendData(const std::string& data);
 	void start();
 	void stop();
+	void monitorConnection();
+	bool isConnected() const { return consoleConnected_; };
 };
 
 }
