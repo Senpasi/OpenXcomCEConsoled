@@ -34,3 +34,46 @@ items:
     clipSize: -1
     recover: false
     flatRate: true
+  - type: STR_WATCHER_CORPSE
+    categories: [STR_CORPSES]
+    size: 1
+    costSell: 1000000
+    battleType: 11
+    listOrder: 62360
+  - type: STR_WATCHER
+    categories: [STR_BEASTS]
+    size: 0.0
+    recover: true
+    liveAlien: true
+    prisonType: 2
+    costSell: -1000000
+    listOrder: 115470
+  - type: STR_WATCHER_WEAPON
+    categories: [STR_BUILT_INS]
+    weight: 3
+    bigSprite: 547
+    meleeSound: 48
+    meleeHitSound: 109
+    strengthApplied: true
+    damageType: 6
+    damageAlter:
+      RandomType: 2
+      IgnoreDirection: true
+      ToHealth: 0.0
+      ToStun: 0.0
+      ToTile: 0
+      ToTime: 2.0
+      ToMorale: 2.0
+      RandomWound: false
+      ToWound: 0
+      ToArmor: 0.1
+      ArmorEffectiveness: 0.1
+    accuracyMelee: 100
+    tuMelee: 15
+    battleType: 3
+    fixedWeapon: true
+    invWidth: 2
+    invHeight: 3
+    clipSize: -1
+    recover: false
+    flatRate: true

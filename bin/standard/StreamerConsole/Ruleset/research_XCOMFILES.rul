@@ -23,3 +23,27 @@ research:
     points: 0
     dependencies:
       - STR_MEGAZOMBIE_BIG_JOE_AUTOPSY
+  - name: STR_WATCHER_CORPSE
+    requiresBaseFunc: [BIOLAB]
+    cost: 30
+    points: 50
+    lookup: STR_WATCHER_AUTOPSY
+    needItem: true
+    destroyItem: true
+    listOrder: 62360
+  - name: STR_WATCHER_AUTOPSY
+    cost: 0
+    points: 50
+    needItem: true
+    lookup: STR_WATCHER_CORPSE
+  - name: STR_WATCHER
+    cost: 30
+    points: 50
+    needItem: true
+    destroyItem: true
+    spawnedItem: STR_WATCHER_CORPSE
+  - name: STR_WATCHER_ARMOR
+    cost: 0
+    points: 0
+    dependencies:
+      - STR_WATCHER_AUTOPSY

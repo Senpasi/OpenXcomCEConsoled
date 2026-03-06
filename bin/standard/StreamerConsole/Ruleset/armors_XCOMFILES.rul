@@ -42,3 +42,48 @@ armors:
       - 3.0
       - 0.5
     loftempsSet: [ 92, 89, 90, 91 ]
+  - type: STR_WATCHER_ARMOR
+    spriteSheet: GHOST_EYE.PCK
+    spriteInv: inventory_GHOST_EYE
+    corpseBattle:
+      - STR_ECTOPLASM
+    visibilityAtDay: 20
+    visibilityAtDark: 20
+    frontArmor: 500
+    sideArmor: 500
+    rearArmor: 500
+    underArmor: 500
+    psiDefence: 
+      psiStrength: 1.0
+      psiSkill: 0.4
+      moraleCurrent: 0.33
+      bravery: 0.2
+    drawingRoutine: 8
+    recovery:
+      mana:
+        flatHundred: 0.1
+      energy:
+        flatHundred: 0.25
+        healthCurrent: 0.25
+      stun:
+        healthCurrent: 0.1
+    overKill: 0.5
+    constantAnimation: true
+    damageModifier:
+      - 0.1
+      - 0.1
+      - 0.1
+      - 0.1
+      - 0.1
+      - 0.1
+      - 0.1
+      - 0.1
+      - 0.1
+      - 0.1
+      - 0.1
+      - 0.1
+      - 0.1
+      - 0.1
+      - 0.1
+      - 0.1
+    loftempsSet: [ 3 ]

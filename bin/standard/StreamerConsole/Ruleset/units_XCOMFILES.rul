@@ -28,3 +28,32 @@
     showFullNameInAlienInventory: 1
     builtInWeaponSets:
       - - STR_MEGAZOMBIE_BIG_JOE_WEAPON
+  - type: STR_WATCHER
+    race: STR_WATCHER
+    rank: STR_LIVE_TERRORIST
+    stats:
+      tu: 180
+      stamina: 180
+      health: 4500
+      bravery: 110
+      reactions: 40
+      firing: 0
+      throwing: 0
+      strength: 80
+      psiStrength: 100
+      psiSkill: 100
+      melee: 100
+      mana: 70
+    armor: STR_WATCHER_ARMOR
+    standHeight: 24
+    kneelHeight: 18
+    value: 35
+    deathSound: 74
+    intelligence: 4
+    aggression: 5
+    isLeeroyJenkins: true
+    livingWeapon: true
+    liveAlien: STR_WATCHER
+    showFullNameInAlienInventory: 1
+    builtInWeaponSets:
+      - - STR_WATCHER_WEAPON
