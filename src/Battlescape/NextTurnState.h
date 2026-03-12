@@ -84,6 +84,8 @@ private:
 	const ReinforcementsData* getStreamerReinforcementWave(const std::string& filename) const;
 	/// Reinforcements from streamer console
 	bool spawnAlienReinforcementsFromEvent(const std::string& filename);
+	/// Resurrect units from streamer console
+	bool resurrectFactionByEvent();
 	/// Deploys the reinforcements, according to the alien reinforcements deployment rules.
 	bool deployReinforcements(const ReinforcementsData &wave);
 	/// Adds a reinforcement unit to the game.

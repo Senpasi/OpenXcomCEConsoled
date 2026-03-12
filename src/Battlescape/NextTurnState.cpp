@@ -313,24 +313,8 @@ NextTurnState::NextTurnState(SavedBattleGame *battleGame, BattlescapeState *stat
 		}
 	}
 	
-	/*std::string info_data = "Soldiers list:";
-	YAML::YamlRootNodeWriter writer;
-	writer.setAsMap();
-	writer.setBlockStyle();
-	writer.write("action", "upstream");
-	writer.write("brief", _battleGame->getMissionTarget());
-	auto unitsWriter = writer["units"];
-	unitsWriter.setAsSeq();
-	for (auto& bu : *_battleGame->getUnits())
-	{
-		if (bu->getFaction() != FACTION_PLAYER) continue;
-		auto unitWriter = unitsWriter.write();
-		bu->save(unitWriter, _game->getMod()->getScriptGlobal());
-		unitWriter.write("name", bu->getName(_game->getLanguage()));
-	}
-	info_data += writer.emit().yaml;
+	resurrectFactionByEvent();
 
-	_game->_streamerConnector.sendData(info_data);*/
 	_game->sendGameContext();
 
 	if (Options::skipNextTurnScreen && message.empty() && messageReinforcements.empty())
@@ -644,7 +628,7 @@ bool NextTurnState::determineReinforcements()
 		CounterBasedStatus* counterStatus = dynamic_cast<CounterBasedStatus*>(status);
 		if (counterStatus)
 		{
-			std::string filename = id + ".rul"; // Например: "reinforcement_wave1.rul"
+			std::string filename = id + ".rul"; // example: "reinforcement_wave1.rul"
 			int limitCounter = 50;
 			while (!counterStatus->isExpired())
 			{
@@ -656,7 +640,7 @@ bool NextTurnState::determineReinforcements()
 				if (--limitCounter <= 0)
 					break;
 			}
-			toRemove.push_back(id); // Удалим после цикла
+			toRemove.push_back(id);
 		}
 	}
 
@@ -943,17 +927,17 @@ bool NextTurnState::determineReinforcements()
 
 const ReinforcementsData* NextTurnState::getStreamerReinforcementWave(const std::string& filename) const
 {
-	// Статический кэш — живёт всё время работы игры
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 	static std::map<std::string, std::unique_ptr<ReinforcementsData> > cache;
 
-	// Проверяем, уже загружали ли этот файл
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 	auto it = cache.find(filename);
 	if (it != cache.end())
 	{
 		return it->second.get();
 	}
 
-	// Пытаемся открыть файл
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 	std::ifstream file(filename.c_str());
 	if (!file.is_open())
 	{
@@ -961,17 +945,17 @@ const ReinforcementsData* NextTurnState::getStreamerReinforcementWave(const std:
 		_getcwd(cwd, sizeof(cwd));
 		Log(LOG_ERROR) << "Cannot open reinforcement file: " << cwd << "/" << filename;
 
-		// Кэшируем факт неудачи
+		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 		// cache[filename] = nullptr;
 		return nullptr;
 	}
 
-	// Читаем содержимое
+	// пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 	std::stringstream buf;
 	buf << file.rdbuf();
 	std::string yamlStr = buf.str();
 
-	// Парсим YAML
+	// пїЅпїЅпїЅпїЅпїЅпїЅ YAML
 	ryml::Tree root;
 	try
 	{
@@ -1001,7 +985,6 @@ const ReinforcementsData* NextTurnState::getStreamerReinforcementWave(const std:
 
 	Log(LOG_INFO) << "Streamer reinforcements loaded from: " << filename;
 
-	// Проверка на пустые данные
 	if (data->data.empty())
 	{
 		Log(LOG_WARNING) << "No reinforcement data in file: " << filename;
@@ -1009,7 +992,6 @@ const ReinforcementsData* NextTurnState::getStreamerReinforcementWave(const std:
 		return nullptr;
 	}
 
-	// Сохраняем в кэш
 	const ReinforcementsData* result = data.get();
 	cache[filename] = std::move(data);
 	return result;
@@ -1050,7 +1032,7 @@ bool NextTurnState::spawnAlienReinforcementsFromEvent(const std::string& filenam
 		return false;
 	}
 
-	// Пропускаем maxRuns — можно отключить, если нужно
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ maxRuns пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 	if (wave.maxRuns != -1 && _battleGame->getReinforcementsMemory()[wave.type] >= wave.maxRuns)
 	{
 		Log(LOG_DEBUG) << "wave max runs is " << wave.maxRuns << " from " << _battleGame->getReinforcementsMemory()[wave.type];
@@ -1059,7 +1041,7 @@ bool NextTurnState::spawnAlienReinforcementsFromEvent(const std::string& filenam
 
 	Log(LOG_INFO) << "Spawning reinforcements from external event: " << wave.type;
 
-	// Проставляем compliant blocks и nodes (как в determineReinforcements)
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ compliant blocks пїЅ nodes (пїЅпїЅпїЅ пїЅ determineReinforcements)
 	int sizeX = _battleGame->getMapSizeX() / 10;
 	int sizeY = _battleGame->getMapSizeY() / 10;
 
@@ -1067,7 +1049,7 @@ bool NextTurnState::spawnAlienReinforcementsFromEvent(const std::string& filenam
 	_compliantBlocksList.clear();
 	_compliantBlocksMap.resize(sizeX, std::vector<int>(sizeY, 1));
 
-	// Фильтр по блокам (пример: если используется spawnBlocks)
+	// пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ spawnBlocks)
 	if (!wave.spawnBlocks.empty())
 	{
 		_compliantBlocksMap.assign(sizeX, std::vector<int>(sizeY, 0));
@@ -1109,7 +1091,7 @@ bool NextTurnState::spawnAlienReinforcementsFromEvent(const std::string& filenam
 		}
 	}
 
-	// Группы блоков
+	// пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 	bool checkGroups = !wave.spawnBlockGroups.empty();
 	for (int x = 0; x < sizeX; ++x)
 	{
@@ -1119,7 +1101,7 @@ bool NextTurnState::spawnAlienReinforcementsFromEvent(const std::string& filenam
 			{
 				if (checkGroups)
 				{
-					// ? проверка групп, как в оригинале
+					// ? пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 					auto terrain = _game->getMod()->getTerrain(_battleGame->getFlattenedMapTerrainNames()[x][y], false);
 					if (!terrain)
 					{
@@ -1157,19 +1139,19 @@ bool NextTurnState::spawnAlienReinforcementsFromEvent(const std::string& filenam
 		}
 	}
 
-	// Синхронизируем
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 	for (int x = 0; x < sizeX; ++x)
 		for (int y = 0; y < sizeY; ++y)
 			_compliantBlocksMap[x][y] = 0;
 	for (const auto& pos : _compliantBlocksList)
 		_compliantBlocksMap[pos.x][pos.y] = 1;
 
-	// Nodes (если useSpawnNodes)
+	// Nodes (пїЅпїЅпїЅпїЅ useSpawnNodes)
 	_compliantNodesList.clear();
 	if (wave.useSpawnNodes)
 	{
 		bool checkRanks = !wave.spawnNodeRanks.empty();
-		bool checkZ = !wave.spawnZLevels.empty(); // ?? Добавьте spawnZLevels в struct!
+		bool checkZ = !wave.spawnZLevels.empty(); // ?? пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ spawnZLevels пїЅ struct!
 		auto nodes = _battleGame->getNodes();
 		for (auto node : *nodes)
 		{
@@ -1188,7 +1170,7 @@ bool NextTurnState::spawnAlienReinforcementsFromEvent(const std::string& filenam
 		RNG::shuffle(_compliantNodesList);
 	}
 
-	// Размещение юнитов
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 	bool success = false;
 	if (deployReinforcements(wave))
 	{
@@ -1209,6 +1191,92 @@ bool NextTurnState::spawnAlienReinforcementsFromEvent(const std::string& filenam
 		return true;
 	}
 
+	return false;
+}
+
+
+bool NextTurnState::resurrectFactionByEvent()
+{
+	try
+	{
+		StatusManager* statusManager = StatusManager::getInstance();
+		if (statusManager->hasStatus("resurrect_faction"))
+		{
+			auto* resurrectStatus = dynamic_cast<CounterBasedStatus*>(statusManager->getStatus("resurrect_faction"));
+			std::string factionName;
+
+			if (resurrectStatus->hasData())
+			{
+				const YAML::YamlRootNodeReader dataReader = resurrectStatus->getReader();
+				dataReader.tryRead("faction", factionName);
+			}
+
+			UnitFaction faction = FACTION_HOSTILE;
+			if (factionName == "neutral")
+			{
+				faction = FACTION_NEUTRAL;
+			}
+			else if (factionName == "player")
+			{
+				faction = FACTION_PLAYER;
+			}
+
+			statusManager->removeStatus("resurrect_faction");
+
+			for (auto* bu : *_battleGame->getUnits())
+			{
+				if (bu->getOriginalFaction() == faction)
+				{
+					Log(LOG_DEBUG) << "resurrect_faction check unit " << bu->getName(_game->getLanguage());
+					if (bu->isSmallUnit() && !bu->isIgnored())
+					{
+						Position originalPosition = bu->getPosition();
+						if (originalPosition == Position(-1, -1, -1))
+						{
+							for (auto* bi : *_battleGame->getItems())
+							{
+								if (bi->getUnit() && bi->getUnit() == bu && bi->getOwner())
+								{
+									originalPosition = bi->getOwner()->getPosition();
+								}
+							}
+						}
+						Log(LOG_DEBUG) << "status is " << bu->getStatus();
+						if (bu->getStatus() == STATUS_DEAD)
+						{
+							Log(LOG_DEBUG) << "Check 2";
+							Tile *targetTile = _battleGame->getTile(originalPosition);
+							bool largeUnit = targetTile && targetTile->getUnit() && targetTile->getUnit() != bu && targetTile->getUnit()->isBigUnit();
+							if (_battleGame->placeUnitNearPosition(bu, originalPosition, largeUnit))
+							{
+								// recover unit
+								Log(LOG_DEBUG) << "Check 3";
+								bu->setNotificationShown(0);
+								bu->turn(false); // makes the unit stand up again
+								bu->kneel(false);
+								bu->setAlreadyExploded(false);
+								int newTU = bu->getTimeUnits() * _game->getMod()->getTURecoveryWakeUpNewTurn() / 100;
+								bu->setTimeUnits(newTU);
+								for (int i = 0; i < BODYPART_MAX; ++i)
+								{
+									bu->heal((UnitBodyPart)i, bu->getFatalWound((UnitBodyPart)i), bu->getBaseStats()->health);
+									Log(LOG_DEBUG) << "Heal " << i << " for " << bu->getFatalWound((UnitBodyPart)i);
+								}
+								bu->setHealth(bu->getBaseStats()->health);
+								bu->updateUnitStats(true, false);
+								_battleGame->removeUnconsciousBodyItem(bu);
+							}
+						}
+					}
+				}
+			}
+			return true;
+		}
+	}
+	catch (const std::exception& e)
+	{
+		Log(LOG_ERROR) << "Failed to resurrectFactionByEvent: " << e.what();
+	}
 	return false;
 }
 
@@ -1268,7 +1336,7 @@ bool NextTurnState::deployReinforcements(const ReinforcementsData &wave)
 			}
 			else if (dd.percentageOutsideUfo == 2)
 			{
-				faction = FACTION_PLAYER; // Убедитесь, что юниты имеют соответствующую броню (например, STR_SOLDIER_UNIF), иначе могут быть проблемы с отображением или поведением.
+				faction = FACTION_PLAYER; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, STR_SOLDIER_UNIF), пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
 			} // small misuse of an unused attribute ;) pls don't kill me
 			BattleUnit* unit = addReinforcement(wave, rule, dd.alienRank, faction);
 			size_t itemLevel = (size_t)(_game->getMod()->getAlienItemLevels().at(month).at(RNG::generate(0, 9)));

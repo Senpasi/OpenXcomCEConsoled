@@ -53,10 +53,15 @@ std::string EventsList::processEvent(const std::string& yamlString)
 		"ask_info",
 		"force_bug_hunt",
 		"soldier_transformation",
-		"soldier_message"
+		"soldier_message",
+		"resurrect_faction"
 	};
 
-	if (eventId == "increased_damage_5min")
+	if (eventId == "hi")
+	{
+		return "hi";
+	}
+	else if (eventId == "increased_damage_5min")
     {
         auto status = std::make_unique<TimeBasedStatus>(300.f);
         status->setData(fullEventYaml);

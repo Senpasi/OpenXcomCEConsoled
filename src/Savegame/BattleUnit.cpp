@@ -1510,6 +1510,11 @@ int BattleUnit::getHealth() const
 	return _health;
 }
 
+void BattleUnit::setHealth(int value)
+{
+	_health = value;
+}
+
 /**
  * Returns the soldier's amount of mana.
  * @return Mana.
