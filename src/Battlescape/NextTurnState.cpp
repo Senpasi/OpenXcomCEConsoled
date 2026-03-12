@@ -1227,7 +1227,6 @@ bool NextTurnState::resurrectFactionByEvent()
 			{
 				if (bu->getOriginalFaction() == faction)
 				{
-					Log(LOG_DEBUG) << "resurrect_faction check unit " << bu->getName(_game->getLanguage());
 					if (bu->isSmallUnit() && !bu->isIgnored())
 					{
 						Position originalPosition = bu->getPosition();
@@ -1241,16 +1240,13 @@ bool NextTurnState::resurrectFactionByEvent()
 								}
 							}
 						}
-						Log(LOG_DEBUG) << "status is " << bu->getStatus();
 						if (bu->getStatus() == STATUS_DEAD)
 						{
-							Log(LOG_DEBUG) << "Check 2";
 							Tile *targetTile = _battleGame->getTile(originalPosition);
 							bool largeUnit = targetTile && targetTile->getUnit() && targetTile->getUnit() != bu && targetTile->getUnit()->isBigUnit();
 							if (_battleGame->placeUnitNearPosition(bu, originalPosition, largeUnit))
 							{
 								// recover unit
-								Log(LOG_DEBUG) << "Check 3";
 								bu->setNotificationShown(0);
 								bu->turn(false); // makes the unit stand up again
 								bu->kneel(false);
@@ -1260,7 +1256,6 @@ bool NextTurnState::resurrectFactionByEvent()
 								for (int i = 0; i < BODYPART_MAX; ++i)
 								{
 									bu->heal((UnitBodyPart)i, bu->getFatalWound((UnitBodyPart)i), bu->getBaseStats()->health);
-									Log(LOG_DEBUG) << "Heal " << i << " for " << bu->getFatalWound((UnitBodyPart)i);
 								}
 								bu->setHealth(bu->getBaseStats()->health);
 								bu->updateUnitStats(true, false);
