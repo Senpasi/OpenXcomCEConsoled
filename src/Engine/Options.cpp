@@ -579,6 +579,9 @@ void createAdvancedOptionsOTHER()
 void createControlsOTHER()
 {
 	// your fork's controls here
+#ifdef _WIN32
+	_info.push_back(OptionInfo(OPTION_OTHER, "oxcoConsoleEnabled", &oxcoConsoleEnabled, false, "STR_CONSOLE_ENABLED", "STR_GENERAL"));
+#endif
 }
 
 

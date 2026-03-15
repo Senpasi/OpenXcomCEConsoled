@@ -893,6 +893,8 @@ void BattlescapeState::think()
 
 void BattlescapeState::processSoldierTalks()
 {
+	if (!Options::oxcoConsoleEnabled)
+		return;
 	StatusManager* statusManager = StatusManager::getInstance();
 	if (statusManager->hasStatus("soldier_message"))
 	{

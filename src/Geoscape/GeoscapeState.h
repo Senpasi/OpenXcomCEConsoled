@@ -196,6 +196,7 @@ public:
 	RuleEvent* loadCustomEventRulesFromFile(const std::string& filename, const std::string& event_id);
   private:
 	bool attemptAlienRaceEvolution(int month, AlienBase* ab) const;
+	void proccessConsoleEvents();
 	/// Process each individual mission script command.
 	bool processCommand(RuleMissionScript *command);
 	bool buttonsDisabled();

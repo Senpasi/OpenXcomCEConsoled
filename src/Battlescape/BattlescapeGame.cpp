@@ -3260,7 +3260,7 @@ void BattlescapeGame::writeUnitInfo(YAML::YamlNodeWriter& writer, BattleUnit* un
 */
 void BattlescapeGame::sendHitNotification(BattleUnit* target, BattleActionAttack attack, bool armorPenetrated, bool unitKilled, bool unitStunned)
 {
-    if (!_parentState || !_parentState->getGame() || !_parentState->getGame()->_streamerConnector.isConnected())
+    if (!_parentState || !_parentState->getGame() || !Options::oxcoConsoleEnabled)
         return;
 
 	Language* lang = _parentState->getGame()->getLanguage();
@@ -3334,7 +3334,7 @@ void BattlescapeGame::sendHitNotification(BattleUnit* target, BattleActionAttack
  */
 void BattlescapeGame::sendEnemyDetectedNotification(BattleUnit* observer, const std::vector<BattleUnit*> &spottedUnits, int numUnitsSpotted)
 {
-    if (!_parentState || !_parentState->getGame() || !observer || !spottedUnits.size() || !_parentState->getGame()->_streamerConnector.isConnected())
+    if (!_parentState || !_parentState->getGame() || !observer || !spottedUnits.size() || !Options::oxcoConsoleEnabled)
         return;
 
 	Language* lang = _parentState->getGame()->getLanguage();

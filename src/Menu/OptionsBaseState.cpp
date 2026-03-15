@@ -238,6 +238,15 @@ void OptionsBaseState::btnOkClick(Action *)
 			restart(_origin);
 		}
 	}
+	bool console_started = _game->_streamerConnector.isStarted();
+	if (!console_started && Options::oxcoConsoleEnabled)
+	{
+		_game->_streamerConnector.start();
+	}
+	else if (console_started && !Options::oxcoConsoleEnabled)
+	{
+		_game->_streamerConnector.stop();
+	}
 }
 
 /**

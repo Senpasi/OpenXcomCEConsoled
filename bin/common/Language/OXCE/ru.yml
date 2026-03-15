@@ -386,6 +386,8 @@ ru:
   STR_BRIEFING: "Инструктаж"
   STR_TOGGLE_DEBUG_MODE: "ВКЛ./ВЫКЛ. РЕЖИМА РАЗРАБОТЧИКА"
   STR_DEBUG_KILL_ALL_ALIENS: "РАЗР.: Убить всех противников"
+  STR_CONSOLE_ENABLED: "Консоль стримера: ВКЛ."
+  STR_CONSOLE_ENABLED_DESC: "Включает подключение к консоли стримера через named pipes."
   STR_PHYSICAL_TRAINING: "Боевая подготовка"
   STR_REMAINING_TRAINING_FACILITY_CAPACITY: "СВОБОДНЫХ ТРЕНИРОВОЧНЫХ МЕСТ> {ALT}{0}"
   STR_NO_WOUNDED: "-"

@@ -370,11 +370,14 @@ void NextTurnState::checkBugHuntMode()
 	if (_battleGame->getBughuntMode())
 		return;
 
-	StatusManager* statusManager = StatusManager::getInstance();
-	if (statusManager->hasStatus("force_bug_hunt"))
+	if (Options::oxcoConsoleEnabled)
 	{
-		statusManager->removeStatus("force_bug_hunt");
-		_battleGame->setBughuntMode(true);
+		StatusManager* statusManager = StatusManager::getInstance();
+		if (statusManager->hasStatus("force_bug_hunt"))
+		{
+			statusManager->removeStatus("force_bug_hunt");
+			_battleGame->setBughuntMode(true);
+		}
 	}
 
 	// too early for bug hunt
@@ -614,39 +617,42 @@ bool NextTurnState::determineReinforcements()
 	bool showAlert = false;
 	const AlienDeployment* deployment = _game->getMod()->getDeployment(_battleGame->getReinforcementsDeployment(), true);
 
-	StatusManager* statusManager = StatusManager::getInstance();
-
-	Log(LOG_DEBUG) << "Checking status reinforcement_*";
-	auto reinforcementEntries = statusManager->getStatusesByPrefix("reinforcement_");
-	std::vector<std::string> toRemove;
-
-	for (const auto& entry : reinforcementEntries)
+	if(Options::oxcoConsoleEnabled)
 	{
-		std::string id = entry.first;
-		Status* status = entry.second;
+		StatusManager* statusManager = StatusManager::getInstance();
 
-		CounterBasedStatus* counterStatus = dynamic_cast<CounterBasedStatus*>(status);
-		if (counterStatus)
+		Log(LOG_DEBUG) << "Checking status reinforcement_*";
+		auto reinforcementEntries = statusManager->getStatusesByPrefix("reinforcement_");
+		std::vector<std::string> toRemove;
+
+		for (const auto& entry : reinforcementEntries)
 		{
-			std::string filename = id + ".rul"; // example: "reinforcement_wave1.rul"
-			int limitCounter = 50;
-			while (!counterStatus->isExpired())
-			{
-				counterStatus->decrementCount();
-				if (spawnAlienReinforcementsFromEvent(filename))
-				{
-					showAlert = true;
-				}
-				if (--limitCounter <= 0)
-					break;
-			}
-			toRemove.push_back(id);
-		}
-	}
+			std::string id = entry.first;
+			Status* status = entry.second;
 
-	for (const auto& id : toRemove)
-	{
-		statusManager->removeStatus(id);
+			CounterBasedStatus* counterStatus = dynamic_cast<CounterBasedStatus*>(status);
+			if (counterStatus)
+			{
+				std::string filename = id + ".rul"; // example: "reinforcement_wave1.rul"
+				int limitCounter = 50;
+				while (!counterStatus->isExpired())
+				{
+					counterStatus->decrementCount();
+					if (spawnAlienReinforcementsFromEvent(filename))
+					{
+						showAlert = true;
+					}
+					if (--limitCounter <= 0)
+						break;
+				}
+				toRemove.push_back(id);
+			}
+		}
+
+		for (const auto& id : toRemove)
+		{
+			statusManager->removeStatus(id);
+		}
 	}
 
 	int currentTurnReinforcements = _battleGame->getTurn();
@@ -1199,6 +1205,8 @@ bool NextTurnState::resurrectFactionByEvent()
 {
 	try
 	{
+		if(!Options::oxcoConsoleEnabled)
+			return false;
 		StatusManager* statusManager = StatusManager::getInstance();
 		if (statusManager->hasStatus("resurrect_faction"))
 		{

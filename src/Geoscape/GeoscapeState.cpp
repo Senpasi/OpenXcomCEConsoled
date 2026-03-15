@@ -1496,7 +1496,13 @@ void GeoscapeState::time5Seconds()
 		}
 	);
 	
-	// Process console events
+	proccessConsoleEvents();
+	
+}
+
+void GeoscapeState::proccessConsoleEvents()
+{
+	if(!Options::oxcoConsoleEnabled) return;
 	try
 	{
 		StatusManager* statusManager = StatusManager::getInstance();
@@ -2450,7 +2456,8 @@ void GeoscapeState::ufoDetection(Ufo* ufo, const std::vector<Craft*>* activeCraf
 		detected = maskBitOr(detected, craft->detect(ufo, save, alreadyTracked));
 	}
 
-	if (maskTest(detected, DETECTION_RADAR) && !maskTest(detected, DETECTION_HYPERWAVE))
+	if (maskTest(detected, DETECTION_RADAR) && !maskTest(detected, DETECTION_HYPERWAVE)
+		&& Options::oxcoConsoleEnabled)
 	{
 		StatusManager* statusManager = StatusManager::getInstance();
 		statusManager->update(0);

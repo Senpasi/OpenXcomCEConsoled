@@ -34,6 +34,7 @@ StreamerConsoleConnector::~StreamerConsoleConnector()
 
 void StreamerConsoleConnector::start()
 {
+	consoleStarted_ = true;
 	readThread_ = std::thread(&StreamerConsoleConnector::processRead, this);
 	writeThread_ = std::thread(&StreamerConsoleConnector::processWrite, this);
 }
@@ -57,6 +58,7 @@ void StreamerConsoleConnector::stop()
 	{
 		writeThread_.join();
 	}
+	consoleStarted_ = false;
 }
 
 void StreamerConsoleConnector::processRead()
@@ -123,8 +125,6 @@ void StreamerConsoleConnector::processRead()
 		char buffer[65536];
 		while (!stopFlag_)
 		{
-			if (!consoleConnected_)
-				consoleConnected_ = true;
 
 			OVERLAPPED readOverlapped = {};
 			readOverlapped.hEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
