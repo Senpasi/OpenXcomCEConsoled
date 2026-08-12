@@ -1,0 +1,48 @@
+type: streamer_wave
+minDifficulty: 0
+maxDifficulty: 4
+useSpawnNodes: true
+spawnNodeRanks: [ 0, 1 ]
+briefing:
+  title: STR_STREAMER_XCOM_REINFORCEMENTS_TITLE
+  desc: "В зону операции пребывают союзные механизированные силы."
+data:
+  - alienRank: 7
+    customUnitType: STR_SECTOPOD_TERRORIST
+    lowQty: 1
+    highQty: 1
+    dQty: 0
+    percentageOutsideUfo: 2
+    itemSets:
+      -
+        []
+      -
+        []
+      -
+        []
+  - alienRank: 7
+    customUnitType: STR_MAGMA_ROBOTANK
+    lowQty: 1
+    highQty: 2
+    dQty: 0
+    percentageOutsideUfo: 2
+    itemSets:
+      -
+        []
+      -
+        []
+      -
+        []
+  - alienRank: 7
+    customUnitType: STR_MAGMA_MINITANK
+    lowQty: 1
+    highQty: 2
+    dQty: 0
+    percentageOutsideUfo: 2
+    itemSets:
+      -
+        []
+      -
+        []
+      -
+        []

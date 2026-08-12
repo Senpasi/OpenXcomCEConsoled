@@ -1,0 +1,69 @@
+type: streamer_wave
+minDifficulty: 0
+maxDifficulty: 4
+useSpawnNodes: true
+spawnNodeRanks: [ 0, 1 ]
+briefing:
+  title: STR_STREAMER_ALIEN_REINFORCEMENTS_TITLE
+  desc: "В зоне операции замечена группа оборотней!"
+data:
+  - alienRank: 6
+    customUnitType: STR_WEREWOLF_TERRORIST
+    lowQty: 2
+    highQty: 4
+    dQty: 1
+    itemSets:
+      -
+        []
+      -
+        []
+      -
+        []
+  - alienRank: 7
+    customUnitType: STR_WEREWOLF_WHITE_LEADER
+    lowQty: 0
+    highQty: 2
+    dQty: 1
+    itemSets:
+      -
+        []
+      -
+        []
+      -
+        []
+  - alienRank: 6
+    customUnitType: STR_WERECAT_TERRORIST
+    lowQty: 2
+    highQty: 4
+    dQty: 1
+    itemSets:
+      -
+        []
+      -
+        []
+      -
+        []
+  - alienRank: 7
+    customUnitType: STR_WERECAT_BLACK_LEADER
+    lowQty: 0
+    highQty: 2
+    dQty: 1
+    itemSets:
+      -
+        []
+      -
+        []
+      -
+        []
+  - alienRank: 7
+    customUnitType: STR_FENRIR_TERRORIST
+    lowQty: 0
+    highQty: 0
+    dQty: 1
+    itemSets:
+      -
+        []
+      -
+        []
+      -
+        []

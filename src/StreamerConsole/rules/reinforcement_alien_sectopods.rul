@@ -1,0 +1,75 @@
+type: streamer_wave
+minDifficulty: 0
+maxDifficulty: 4
+useSpawnNodes: true
+spawnNodeRanks: [ 0, 1 ]
+briefing:
+  title: STR_STREAMER_ALIEN_REINFORCEMENTS_TITLE
+  desc: "В зоне операции замечена тяжелая механизированная группа противника!"
+data:
+  - alienRank: 6
+    customUnitType: STR_MIB_SECTOPOD_TERRORIST
+    lowQty: 1
+    highQty: 2
+    dQty: 0
+    itemSets:
+      -
+        []
+      -
+        []
+      -
+        []
+  - alienRank: 7
+    customUnitType: STR_SECTOPOD_TERRORIST
+    lowQty: 1
+    highQty: 2
+    dQty: 0
+    itemSets:
+      -
+        []
+      -
+        []
+      -
+        []
+  - alienRank: 7
+    customUnitType: STR_MIB_SHOCK_TROOPER
+    lowQty: 3
+    highQty: 3
+    dQty: 2
+    itemSets:
+      -
+        - STR_PLASMA_SWORD
+        - STR_ALIEN_GRENADE
+      -
+        - STR_PLASMA_PISTOL
+        - STR_PLASMA_PISTOL_CLIP
+      -
+        - STR_PLASMA_SUB
+        - STR_PLASMA_SUB_CLIP
+        - STR_PLASMA_SUB_CLIP
+      -
+        - STR_PLASMA_RIFLE
+        - STR_PLASMA_RIFLE_CLIP
+      -
+        - STR_SMALL_LAUNCHER
+        - STR_ELERIUM_BOMB
+        - STR_ELERIUM_BOMB
+        - STR_ELERIUM_BOMB
+      -
+        - STR_PLASMA_SWORD
+        - STR_ALIEN_GRENADE
+      -
+        - STR_PLASMA_PISTOL
+        - STR_PLASMA_PISTOL_CLIP
+      -
+        - STR_PLASMA_SUB
+        - STR_PLASMA_SUB_CLIP
+        - STR_PLASMA_SUB_CLIP
+      -
+        - STR_PLASMA_RIFLE
+        - STR_PLASMA_RIFLE_CLIP
+      -
+        - STR_SMALL_LAUNCHER
+        - STR_ELERIUM_BOMB
+        - STR_ELERIUM_BOMB
+        - STR_ELERIUM_BOMB
