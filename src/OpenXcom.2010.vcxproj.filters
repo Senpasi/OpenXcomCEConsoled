@@ -1223,6 +1223,12 @@
     <ClCompile Include="Ufopaedia\ArticleStateUnit.cpp">
       <Filter>Ufopaedia</Filter>
     </ClCompile>
+    <ClCompile Include="Mod\RuleVoiceSet.cpp">
+      <Filter>Mod</Filter>
+    </ClCompile>
+    <ClCompile Include="Basescape\SoldierVoiceState.cpp">
+      <Filter>Basescape</Filter>
+    </ClCompile>
     <ClCompile Include="StreamerConsole\EventsList.cpp">
       <Filter>StreamerConsole</Filter>
     </ClCompile>
@@ -2716,6 +2722,12 @@
     </ClInclude>
     <ClInclude Include="Ufopaedia\ArticleStateUnit.h">
       <Filter>Ufopaedia</Filter>
+    </ClInclude>
+    <ClInclude Include="Mod\RuleVoiceSet.h">
+      <Filter>Mod</Filter>
+    </ClInclude>
+    <ClInclude Include="Basescape\SoldierVoiceState.h">
+      <Filter>Basescape</Filter>
     </ClInclude>
     <ClInclude Include="StreamerConsole\EventsList.h">
       <Filter>StreamerConsole</Filter>
