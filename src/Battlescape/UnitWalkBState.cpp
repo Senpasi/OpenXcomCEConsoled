@@ -363,6 +363,7 @@ void UnitWalkBState::think()
 					if (!_falling && unitInMyWay && unitInMyWay != _unit)
 					{
 						_action.clearTU();
+						_unit->increaseAIWalkAbortCounter();
 						return cancelCurentMove();
 					}
 				}
