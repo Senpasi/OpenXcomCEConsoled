@@ -814,6 +814,10 @@ void BattlescapeGame::checkForCasualties(const RuleDamageType *damageType, Battl
 						if (!victim->isCosmetic())
 						{
 							bu->getStatistics()->kills.push_back(new BattleUnitKills(killStat));
+							if (killStat.status == STATUS_DEAD)
+							{
+								bu->addKillCount();
+							}
 							if (victim->getFaction() == FACTION_HOSTILE)
 							{
 								bu->getStatistics()->slaveKills++;
@@ -1731,6 +1735,11 @@ void BattlescapeGame::primaryAction(Position pos)
 
 	if (_currentAction.targeting && _save->getSelectedUnit())
 	{
+		if (_currentAction.weapon && _currentAction.weapon->getRules()->isOutOfRange(_currentAction.actor->distance3dToPositionSq(pos)))
+		{
+			_parentState->warning("STR_OUT_OF_RANGE");
+			return;
+		}
 		if (_currentAction.type == BA_LAUNCH)
 		{
 			int maxWaypoints = _currentAction.weapon->getCurrentWaypoints();
