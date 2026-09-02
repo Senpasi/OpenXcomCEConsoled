@@ -35,13 +35,21 @@ class MiniBaseView : public InteractiveSurface
 {
 private:
 	static const int MINI_SIZE = 14;
+	static const int VISIBLE_BASES = 6;
 
+	enum HoverZone { ZONE_NONE = 0, ZONE_LEFT = 1, ZONE_BASE = 2, ZONE_RIGHT = 3 };
+	
 	std::vector<Base*> *_bases;
 	SurfaceSet *_texture;
-	size_t _base, _hoverBase;
+	size_t _base, _hoverBase, _page;
+	int _hoverZone;
 	Uint8 _red, _green, _blue;
+
+	void drawArrow(int cell, bool left, bool enabled);
+	void pageLeft();
+	void pageRight();
 public:
-	static const size_t MAX_BASES = 8;
+	static const size_t MAX_BASES = 16;
 	/// Creates a new mini base view at the specified position and size.
 	MiniBaseView(int width, int height, int x = 0, int y = 0);
 	/// Cleans up the mini base view.
@@ -58,6 +66,8 @@ public:
 	void draw() override;
 	/// Special handling for mouse hovers.
 	void mouseOver(Action *action, State *state) override;
+	/// Special handling for clicks (intercepts pagination arrows).
+	void mouseClick(Action *action, State *state) override;
 	void setColor(Uint8 color) override;
 	void setSecondaryColor(Uint8 color) override;
 	void setBorderColor(Uint8 color) override;

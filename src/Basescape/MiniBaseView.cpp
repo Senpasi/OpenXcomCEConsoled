@@ -34,7 +34,7 @@ namespace OpenXcom
  * @param x X position in pixels.
  * @param y Y position in pixels.
  */
-MiniBaseView::MiniBaseView(int width, int height, int x, int y) : InteractiveSurface(width, height, x, y), _bases(0), _texture(0), _base(0), _hoverBase(0), _red(0), _green(0), _blue(0)
+MiniBaseView::MiniBaseView(int width, int height, int x, int y) : InteractiveSurface(width, height, x, y), _bases(0), _texture(0), _base(0), _hoverBase(0), _page(0), _hoverZone(ZONE_NONE), _red(0), _green(0), _blue(0)
 {
 }
 
@@ -82,6 +82,18 @@ size_t MiniBaseView::getHoveredBase() const
 void MiniBaseView::setSelectedBase(size_t base)
 {
 	_base = base;
+
+	const size_t numBases = _bases ? _bases->size() : 0;
+	if (numBases > VISIBLE_BASES && base < numBases)
+	{
+		if (base < _page)
+			_page = base;
+		else if (base >= _page + VISIBLE_BASES)
+			_page = base - VISIBLE_BASES + 1;
+	}
+	if (_page > numBases)
+		_page = 0;
+
 	_redraw = true;
 }
 
@@ -92,26 +104,41 @@ void MiniBaseView::setSelectedBase(size_t base)
 void MiniBaseView::draw()
 {
 	Surface::draw();
-	for (size_t i = 0; i < MAX_BASES; ++i)
+
+	const size_t numBases = _bases ? _bases->size() : 0;
+
+	if (numBases <= VISIBLE_BASES)
+		_page = 0;
+	else if (_page + VISIBLE_BASES > numBases)
+		_page = numBases - VISIBLE_BASES;
+
+	const bool canLeft  = _page > 0;
+	const bool canRight = _page + VISIBLE_BASES < numBases;
+
+	drawArrow(0, true, canLeft);
+	drawArrow(VISIBLE_BASES + 1, false, canRight);
+
+	for (int j = 0; j < VISIBLE_BASES; ++j)
 	{
-		// Draw base squares
-		if (i == _base)
+		const size_t baseIndex = _page + j;
+		const int x = (j + 1) * (MINI_SIZE + 2);
+
+		if (baseIndex == _base)
 		{
 			SDL_Rect r;
-			r.x = i * (MINI_SIZE + 2);
+			r.x = x;
 			r.y = 0;
 			r.w = MINI_SIZE + 2;
 			r.h = MINI_SIZE + 2;
 			drawRect(&r, 1);
 		}
-		_texture->getFrame(41)->blitNShade(this, i * (MINI_SIZE + 2), 0);
+		_texture->getFrame(41)->blitNShade(this, x, 0);
 
-		// Draw facilities
-		if (i < _bases->size())
+		if (baseIndex < numBases)
 		{
 			SDL_Rect r;
 			lock();
-			for (const auto* fac : *_bases->at(i)->getFacilities())
+			for (const auto* fac : *_bases->at(baseIndex)->getFacilities())
 			{
 				int color;
 				if (fac->getDisabled())
@@ -121,29 +148,65 @@ void MiniBaseView::draw()
 				else
 					color = _red;
 
-				r.x = i * (MINI_SIZE + 2) + 2 + fac->getX() * 2;
+				r.x = x + 2 + fac->getX() * 2;
 				r.y = 2 + fac->getY() * 2;
 				r.w = fac->getRules()->getSizeX() * 2;
 				r.h = fac->getRules()->getSizeY() * 2;
-				drawRect(&r, color+3);
+				drawRect(&r, color + 3);
 				r.x++;
 				r.y++;
 				r.w--;
 				r.h--;
-				drawRect(&r, color+5);
+				drawRect(&r, color + 5);
 				r.x--;
 				r.y--;
-				drawRect(&r, color+2);
+				drawRect(&r, color + 2);
 				r.x++;
 				r.y++;
 				r.w--;
 				r.h--;
-				drawRect(&r, color+3);
+				drawRect(&r, color + 3);
 				r.x--;
 				r.y--;
-				setPixel(r.x, r.y, color+1);
+				setPixel(r.x, r.y, color + 1);
 			}
 			unlock();
+		}
+	}
+}
+
+/**
+ * Draw pagination arrows to scroll through the list of bases.
+ */
+void MiniBaseView::drawArrow(int cell, bool left, bool enabled)
+{
+	if (!enabled)
+		return;
+
+	const Uint8 color = 1;
+	const int cx0 = cell * (MINI_SIZE + 2);
+	const int midY = MINI_SIZE / 2;
+
+	for (int y = 0; y < MINI_SIZE; ++y)
+	{
+		const int t = (y > midY) ? (y - midY) : (midY - y);
+		if (t > midY)
+			continue;
+		if (left)
+		{
+			const int rightEdge = cx0 + MINI_SIZE - 3;
+			const int apex = cx0 + 3;
+			const int leftBound = apex + (rightEdge - apex) * t / (midY + 1);
+			for (int x = leftBound; x <= rightEdge; ++x)
+				setPixel(x, y, color);
+		}
+		else
+		{
+			const int leftEdge = cx0 + 3;
+			const int apex = cx0 + MINI_SIZE - 3;
+			const int rightBound = apex - (apex - leftEdge) * t / (midY + 1);
+			for (int x = leftEdge; x <= rightBound; ++x)
+				setPixel(x, y, color);
 		}
 	}
 }
@@ -155,8 +218,71 @@ void MiniBaseView::draw()
  */
 void MiniBaseView::mouseOver(Action *action, State *state)
 {
-	_hoverBase = (int)floor(action->getRelativeXMouse() / ((MINI_SIZE + 2) * action->getXScale()));
+	const size_t numBases = _bases ? _bases->size() : 0;
+	const int cell = (int)floor(action->getRelativeXMouse() / ((MINI_SIZE + 2) * action->getXScale()));
+
+	if (cell == 0)
+	{
+		_hoverZone = ZONE_LEFT;
+	}
+	else if (cell >= 1 && cell <= VISIBLE_BASES)
+	{
+		const size_t baseIndex = _page + (cell - 1);
+		if (baseIndex < numBases)
+		{
+			_hoverZone = ZONE_BASE;
+			_hoverBase = baseIndex;
+		}
+		else
+		{
+			_hoverZone = ZONE_NONE;
+			_hoverBase = numBases;
+		}
+	}
+	else if (cell == VISIBLE_BASES + 1)
+	{
+		_hoverZone = ZONE_RIGHT;
+	}
+	else
+	{
+		_hoverZone = ZONE_NONE;
+		_hoverBase = numBases;
+	}
+
 	InteractiveSurface::mouseOver(action, state);
+}
+
+void MiniBaseView::mouseClick(Action *action, State *state)
+{
+	if (_hoverZone == ZONE_LEFT)
+	{
+		pageLeft();
+		return;
+	}
+	if (_hoverZone == ZONE_RIGHT)
+	{
+		pageRight();
+		return;
+	}
+	InteractiveSurface::mouseClick(action, state);
+}
+
+void MiniBaseView::pageLeft()
+{
+	if (_page > 0)
+	{
+		--_page;
+		_redraw = true;
+	}
+}
+void MiniBaseView::pageRight()
+{
+	const size_t numBases = _bases ? _bases->size() : 0;
+	if (_page + VISIBLE_BASES < numBases)
+	{
+		++_page;
+		_redraw = true;
+	}
 }
 
 void MiniBaseView::setColor(Uint8 color)

@@ -664,7 +664,8 @@ void BasescapeState::handleKeyPress(Action *action)
 			Options::keyBaseSelect8
 		};
 		int key = action->getDetails()->key.keysym.sym;
-		for (size_t i = 0; i < _game->getSavedGame()->getBases()->size(); ++i)
+		const size_t keyCount = sizeof(baseKeys) / sizeof(baseKeys[0]);
+		for (size_t i = 0; i < _game->getSavedGame()->getBases()->size() && i < keyCount; ++i)
 		{
 			if (key == baseKeys[i])
 			{
