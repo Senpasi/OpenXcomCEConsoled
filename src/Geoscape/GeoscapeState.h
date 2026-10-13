@@ -192,7 +192,7 @@ public:
 	/// Update the resolution settings, we just resized the window.
 	void resize(int &dX, int &dY) override;
 	/// Handle alien mission generation.
-	void determineAlienMissions(bool isNewMonth = true, const RuleEvent* eventRules = nullptr);
+	void determineAlienMissions(bool isNewMonth = true, const RuleEvent* p_eventRules = nullptr);
 	RuleEvent* loadCustomEventRulesFromFile(const std::string& filename, const std::string& event_id);
   private:
 	bool attemptAlienRaceEvolution(int month, AlienBase* ab) const;
