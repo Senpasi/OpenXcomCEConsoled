@@ -3,6 +3,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "../Battlescape/Position.h"
 #include "../Engine/Yaml.h"
 
 namespace OpenXcom
@@ -18,8 +19,14 @@ class Status
     const YAML::YamlString& getData() const { return _fullData; }
     bool hasData() const { return !_fullData.yaml.empty(); }
     YAML::YamlRootNodeReader getReader() const;
+    /// Position chosen by the player for this event (e.g. reinforcements spawn point).
+    void setChosenPosition(const Position& position) { _chosenPosition = position; _hasChosenPosition = true; }
+    bool hasChosenPosition() const { return _hasChosenPosition; }
+    const Position& getChosenPosition() const { return _chosenPosition; }
 private:
     YAML::YamlString _fullData;
+    Position _chosenPosition;
+    bool _hasChosenPosition = false;
 };
 
 class TimeBasedStatus : public Status

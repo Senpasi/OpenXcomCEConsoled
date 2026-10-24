@@ -102,6 +102,7 @@ BattlescapeState::BattlescapeState() :
 	_isMouseScrolling(false), _isMouseScrolled(false),
 	_xBeforeMouseScrolling(0), _yBeforeMouseScrolling(0),
 	_totalMouseMoveX(0), _totalMouseMoveY(0), _mouseMovedOverThreshold(0), _mouseOverIcons(false),
+	_spawnPosSelectionMode(false),
 	_autosave(0),
 	_numberOfDirectlyVisibleUnits(0), _numberOfEnemiesTotal(0), _numberOfEnemiesTotalPlusWounded(0)
 {
@@ -199,6 +200,8 @@ BattlescapeState::BattlescapeState() :
 	_btnSpecial->setVisible(false);
 	_btnSkills = new BattlescapeButton(32, 24, screenWidth - 32, 25); // we need screenWidth, because that is independent of the black bars on the screen
 	_btnSkills->setVisible(false);
+	_btnSpawnPosition = new BattlescapeButton(32, 24, screenWidth - 32, 50); // we need screenWidth, because that is independent of the black bars on the screen
+	_btnSpawnPosition->setVisible(false);
 
 	{
 		int posX = (screenWidth - 32);
@@ -388,6 +391,8 @@ BattlescapeState::BattlescapeState() :
 	_game->getMod()->getSurfaceSet("SPICONS.DAT")->getFrame(1)->blitNShade(_btnSpecial, 0, 0); // use psi button for default
 	add(_btnSkills);
 	_game->getMod()->getSurfaceSet("SPICONS.DAT")->getFrame(1)->blitNShade(_btnSkills, 0, 0); // use psi button for default
+	add(_btnSpawnPosition);
+	_game->getMod()->getSurfaceSet("SPICONS.DAT")->getFrame(1)->blitNShade(_btnSpawnPosition, 0, 0); // use psi button for default
 
 	add(_btnCtrl);
 	add(_btnAlt);
@@ -663,6 +668,11 @@ BattlescapeState::BattlescapeState() :
 	_btnSkills->onMouseClick((ActionHandler)&BattlescapeState::btnSkillsClick);
 	_btnSkills->onKeyboardPress((ActionHandler)&BattlescapeState::btnSkillsClick, Options::keyBattleUseSpecial);
 
+	_btnSpawnPosition->onMouseClick((ActionHandler)&BattlescapeState::btnSpawnPositionClick);
+	_btnSpawnPosition->setTooltip("Choose reinforcements spawn position");
+	_btnSpawnPosition->onMouseIn((ActionHandler)&BattlescapeState::txtTooltipInSpawnPosition);
+	_btnSpawnPosition->onMouseOut((ActionHandler)&BattlescapeState::txtTooltipOut);
+
 	_btnCtrl->onMouseClick((ActionHandler)&BattlescapeState::btnCtrlClick);
 	_btnAlt->onMouseClick((ActionHandler)&BattlescapeState::btnAltClick);
 	_btnShift->onMouseClick((ActionHandler)&BattlescapeState::btnShiftClick);
@@ -863,6 +873,7 @@ void BattlescapeState::think()
 	if (_gameTimer->isRunning())
 	{
 		processSoldierTalks();
+		updateSpawnPositionButton();
 		if (_popups.empty())
 		{
 			State::think();
@@ -940,6 +951,91 @@ void BattlescapeState::processSoldierTalks()
 
 			statusManager->removeStatus("soldier_message");
 		}
+	}
+}
+
+/**
+ * Finds the pending streamer console reinforcements event
+ * for which the player can choose the spawn position.
+ * @return Pointer to the status or 0.
+ */
+static Status* findSpawnPositionStatus()
+{
+	StatusManager* statusManager = StatusManager::getInstance();
+	auto reinforcementEntries = statusManager->getStatusesByPrefix("reinforcement_");
+	for (const auto& entry : reinforcementEntries)
+	{
+		Status* status = entry.second;
+		if (!status || !status->hasData() || status->hasChosenPosition())
+			continue;
+
+		bool canChoosePosition = false;
+		const YAML::YamlRootNodeReader dataReader = status->getReader();
+		dataReader.tryRead("can_choose_position", canChoosePosition);
+		if (canChoosePosition)
+			return status;
+	}
+	return nullptr;
+}
+
+/**
+ * Handler for clicking the reinforcements spawn position button.
+ * @param action Pointer to an action.
+ */
+void BattlescapeState::btnSpawnPositionClick(Action *)
+{
+	if (!Options::oxcoConsoleEnabled)
+		return;
+
+	if (findSpawnPositionStatus() == nullptr)
+	{
+		updateSpawnPositionButton();
+		return;
+	}
+
+	_spawnPosSelectionMode = !_spawnPosSelectionMode;
+	if (_spawnPosSelectionMode)
+	{
+		warningLongRaw("Select the reinforcements spawn position with a left-click; right-click to cancel");
+	}
+}
+
+/**
+ * Updates the visibility of the reinforcements spawn position button.
+ */
+void BattlescapeState::updateSpawnPositionButton()
+{
+	const bool show = Options::oxcoConsoleEnabled && findSpawnPositionStatus() != nullptr;
+	if (!show)
+		_spawnPosSelectionMode = false;
+	_btnSpawnPosition->setVisible(show);
+}
+
+/**
+ * Saves the position chosen by the player into the pending reinforcements event.
+ * @param position The chosen position.
+ * @return Whether the position was saved.
+ */
+bool BattlescapeState::saveChosenSpawnPosition(const Position& position)
+{
+	Status* status = findSpawnPositionStatus();
+	if (!status)
+		return false;
+
+	status->setChosenPosition(position);
+	return true;
+}
+
+/**
+ * Shows a tooltip for the reinforcements spawn position button (raw text).
+ * @param action Pointer to an action.
+ */
+void BattlescapeState::txtTooltipInSpawnPosition(Action *action)
+{
+	if (allowButtons() && Options::battleTooltips)
+	{
+		_currentTooltip = action->getSender()->getTooltip();
+		_txtTooltip->setText(_currentTooltip);
 	}
 }
 
@@ -1120,6 +1216,40 @@ void BattlescapeState::mapClick(Action *action)
 			stopScrolling(action);
 		}
 		if (_isMouseScrolled) return;
+	}
+
+	// don't handle mouseclicks over the spawn position button (it overlaps with map surface,
+	// the same click would otherwise immediately select a position or trigger a battle action)
+	if (_btnSpawnPosition->getVisible() &&
+		action->getAbsoluteXMouse() >= _btnSpawnPosition->getX() && action->getAbsoluteXMouse() < _btnSpawnPosition->getX() + _btnSpawnPosition->getWidth() &&
+		action->getAbsoluteYMouse() >= _btnSpawnPosition->getY() && action->getAbsoluteYMouse() < _btnSpawnPosition->getY() + _btnSpawnPosition->getHeight())
+	{
+		return;
+	}
+
+	// player-chosen spawn position mode for streamer console reinforcements
+	if (_spawnPosSelectionMode)
+	{
+		if (_game->isRightClick(action))
+		{
+			_spawnPosSelectionMode = false;
+			warningRaw("Spawn position selection canceled");
+			return;
+		}
+		if (_game->isLeftClick(action, true) && !_mouseOverIcons
+			&& _map->getCursorType() != CT_NONE && !_battleGame->isBusy())
+		{
+			Position pos;
+			_map->getSelectorPosition(&pos);
+			if (_save->getTile(pos) != 0 && saveChosenSpawnPosition(pos))
+			{
+				_spawnPosSelectionMode = false;
+				std::ostringstream ss;
+				ss << "Reinforcements will spawn near " << pos;
+				warningLongRaw(ss.str());
+			}
+		}
+		return; // don't let the click reach the battle
 	}
 
 	// right-click aborts walking state

@@ -52,7 +52,7 @@ private:
 	Map *_map;
 	BattlescapeButton *_btnUnitUp, *_btnUnitDown, *_btnMapUp, *_btnMapDown, *_btnShowMap, *_btnKneel;
 	BattlescapeButton *_btnInventory, *_btnCenter, *_btnNextSoldier, *_btnNextStop, *_btnShowLayers, *_btnHelp;
-	BattlescapeButton *_btnEndTurn, *_btnAbort, *_btnLaunch, *_btnPsi, *_btnSpecial, *_btnSkills, *_reserve;
+	BattlescapeButton *_btnEndTurn, *_btnAbort, *_btnLaunch, *_btnPsi, *_btnSpecial, *_btnSkills, *_btnSpawnPosition, *_reserve;
 	BattlescapeButton *_btnCtrl, *_btnAlt, *_btnShift, *_btnRMB, *_btnMMB;
 	bool _touchButtonsEnabled;
 	InteractiveSurface *_btnStats;
@@ -92,6 +92,7 @@ private:
 	int _totalMouseMoveX, _totalMouseMoveY;
 	bool _mouseMovedOverThreshold;
 	bool _mouseOverIcons;
+	bool _spawnPosSelectionMode;
 	std::string _currentTooltip;
 	Position _cursorPosition;
 	Uint8 _barHealthColor;
@@ -202,6 +203,12 @@ public:
 	void btnSpecialClick(Action *action);
 	/// Handler for clicking the skills menu button.
 	void btnSkillsClick(Action *action);
+	/// Handler for clicking the reinforcements spawn position button.
+	void btnSpawnPositionClick(Action *action);
+	/// Updates the visibility of the reinforcements spawn position button.
+	void updateSpawnPositionButton();
+	/// Saves the position chosen by the player into the pending reinforcements event.
+	bool saveChosenSpawnPosition(const Position& position);
 	/// Handler for clicking a reserved button.
 	void btnReserveClick(Action *action);
 	/// Handler for clicking the reload button.
@@ -279,6 +286,8 @@ public:
 	void txtTooltipInExtraLeftHand(Action *action);
 	void txtTooltipInExtraRightHand(Action *action);
 	void txtTooltipInExtraSpecial(Action *action);
+	/// Handler for showing the reinforcements spawn position tooltip (raw text).
+	void txtTooltipInSpawnPosition(Action *action);
 	/// Handler for showing tooltip with extra information (about current turn)
 	void txtTooltipInEndTurn(Action *action);
 	/// Handler for hiding tooltip.

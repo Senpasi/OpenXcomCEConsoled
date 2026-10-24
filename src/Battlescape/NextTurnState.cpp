@@ -50,6 +50,8 @@
 #include "TileEngine.h"
 #include "Pathfinding.h"
 #include "ShowUnitsBState.h"
+#include <algorithm>
+#include <cstdlib>
 #include <fstream>
 #include <direct.h>
 
@@ -640,11 +642,21 @@ bool NextTurnState::determineReinforcements()
 			if (counterStatus)
 			{
 				std::string filename = id + ".rul"; // example: "reinforcement_wave1.rul"
+
+				// the player may be allowed to choose the spawn position for this event
+				bool canChoosePosition = false;
+				if (status->hasData())
+				{
+					const YAML::YamlRootNodeReader dataReader = status->getReader();
+					dataReader.tryRead("can_choose_position", canChoosePosition);
+				}
+				const Position* chosenPosition = (canChoosePosition && status->hasChosenPosition()) ? &status->getChosenPosition() : nullptr;
+
 				int limitCounter = 50;
 				while (!counterStatus->isExpired())
 				{
 					counterStatus->decrementCount();
-					if (spawnAlienReinforcementsFromEvent(filename))
+					if (spawnAlienReinforcementsFromEvent(filename, chosenPosition))
 					{
 						showAlert = true;
 					}
@@ -1012,8 +1024,10 @@ const ReinforcementsData* NextTurnState::getStreamerReinforcementWave(const std:
 /**
  * Spawns alien reinforcements triggered by external event (e.g. streamer).
  * Ignores turn conditions and spawns immediately.
+ * @param filename The reinforcements definition file name.
+ * @param preferredPos Optional position chosen by the player to spawn near.
  */
-bool NextTurnState::spawnAlienReinforcementsFromEvent(const std::string& filename)
+bool NextTurnState::spawnAlienReinforcementsFromEvent(const std::string& filename, const Position* preferredPos)
 {
 	Log(LOG_DEBUG) << "Spawning reinforcements from file: " << filename;
 
@@ -1184,7 +1198,7 @@ bool NextTurnState::spawnAlienReinforcementsFromEvent(const std::string& filenam
 
 	// ���������� ������
 	bool success = false;
-	if (deployReinforcements(wave))
+	if (deployReinforcements(wave, preferredPos))
 	{
 		success = true;
 	}
@@ -1319,8 +1333,9 @@ bool NextTurnState::resurrectFactionByEvent()
 /**
  * Deploys the reinforcements, according to the alien reinforcements deployment rules.
  * @param wave Pointer to the reinforcements deployment rules.
+ * @param preferredPos Optional position chosen by the player to spawn near.
  */
-bool NextTurnState::deployReinforcements(const ReinforcementsData &wave)
+bool NextTurnState::deployReinforcements(const ReinforcementsData &wave, const Position* preferredPos)
 {
 	const AlienRace* race = _game->getMod()->getAlienRace(_battleGame->getReinforcementsRace(), true);
 	const int month = _battleGame->getReinforcementsItemLevel();
@@ -1374,7 +1389,7 @@ bool NextTurnState::deployReinforcements(const ReinforcementsData &wave)
 			{
 				faction = FACTION_PLAYER; // ���������, ��� ����� ����� ��������������� ����� (��������, STR_SOLDIER_UNIF), ����� ����� ���� �������� � ������������ ��� ����������.
 			} // small misuse of an unused attribute ;) pls don't kill me
-			BattleUnit* unit = addReinforcement(wave, rule, dd.alienRank, faction);
+			BattleUnit* unit = addReinforcement(wave, rule, dd.alienRank, faction, preferredPos);
 			size_t itemLevel = (size_t)(_game->getMod()->getAlienItemLevels().at(month).at(RNG::generate(0, 9)));
 			if (unit)
 			{
@@ -1423,15 +1438,26 @@ bool NextTurnState::deployReinforcements(const ReinforcementsData &wave)
  * @param rules Pointer to the Unit which holds info about the alien.
  * @param alienRank The rank of the alien, used for spawn point search.
  * @param faction The faction to spawn the unit as (FACTION_PLAYER, FACTION_HOSTILE, FACTION_NEUTRAL).
+ * @param preferredPos Optional position chosen by the player to spawn near.
  * @return Pointer to the created unit.
  */
-BattleUnit* NextTurnState::addReinforcement(const ReinforcementsData& wave, Unit* rules, int alienRank, UnitFaction faction)
+BattleUnit* NextTurnState::addReinforcement(const ReinforcementsData& wave, Unit* rules, int alienRank, UnitFaction faction, const Position* preferredPos)
 {
 	BattleUnit* unit = _battleGame->createTempUnit(rules, faction);
 
-	// 1. try nodes first
 	bool unitPlaced = false;
-	if (wave.useSpawnNodes && !_compliantNodesList.empty())
+
+	// 0. if the player chose a spawn position for this event, try to place the unit on it or near it
+	if (preferredPos != nullptr && placeReinforcementNearPosition(unit, *preferredPos))
+	{
+		unit->setRankInt(alienRank);
+		unit->setDirection(RNG::generate(0, 7));
+		_battleGame->getUnits()->push_back(unit);
+		unitPlaced = true;
+	}
+
+	// 1. try nodes first
+	if (!unitPlaced && wave.useSpawnNodes && !_compliantNodesList.empty())
 	{
 		for (auto* node : _compliantNodesList)
 		{
@@ -1596,6 +1622,62 @@ bool NextTurnState::placeReinforcementNearFriend(BattleUnit *unit)
 		if (tries && _battleGame->placeUnitNearPosition(unit, entryPoint, largeUnit))
 		{
 			return true;
+		}
+	}
+	return false;
+}
+
+/**
+ * Places a unit on the position chosen by the player,
+ * or on the nearest suitable cell around it (expanding square rings).
+ * @param unit Pointer to the unit in question.
+ * @param chosenPosition The position chosen by the player.
+ * @return If we successfully placed the unit.
+ */
+bool NextTurnState::placeReinforcementNearPosition(BattleUnit *unit, const Position& chosenPosition)
+{
+	const int maxRadius = 10;
+
+	// try the levels around the chosen one first (the closest level first)
+	std::vector<int> zOrder;
+	zOrder.reserve(_battleGame->getMapSizeZ());
+	for (int z = 0; z < _battleGame->getMapSizeZ(); ++z)
+	{
+		zOrder.push_back(z);
+	}
+	std::stable_sort(zOrder.begin(), zOrder.end(), [&chosenPosition](int a, int b)
+	{
+		return std::abs(a - chosenPosition.z) < std::abs(b - chosenPosition.z);
+	});
+
+	for (int radius = 0; radius <= maxRadius; ++radius)
+	{
+		for (int dx = -radius; dx <= radius; ++dx)
+		{
+			for (int dy = -radius; dy <= radius; ++dy)
+			{
+				if (radius > 0 && std::abs(dx) != radius && std::abs(dy) != radius)
+				{
+					continue; // only the cells on the current ring
+				}
+				for (int tryZ : zOrder)
+				{
+					Position finalPos = Position(chosenPosition.x + dx, chosenPosition.y + dy, tryZ);
+					if (unit->getMovementType() != MT_FLY)
+					{
+						Tile* t = _battleGame->getTile(finalPos);
+						if (t == 0 || t->getTUCost(O_FLOOR, unit->getMovementType()) == Pathfinding::INVALID_MOVE_COST)
+						{
+							// non-flying units cannot spawn on e.g. a water tile (e.g. in the POLAR terrain)
+							continue;
+						}
+					}
+					if (_battleGame->setUnitPosition(unit, finalPos))
+					{
+						return true;
+					}
+				}
+			}
 		}
 	}
 	return false;

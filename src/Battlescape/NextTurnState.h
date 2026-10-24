@@ -84,15 +84,17 @@ private:
 	bool determineReinforcements();
 	const ReinforcementsData* getStreamerReinforcementWave(const std::string& filename) const;
 	/// Reinforcements from streamer console
-	bool spawnAlienReinforcementsFromEvent(const std::string& filename);
+	bool spawnAlienReinforcementsFromEvent(const std::string& filename, const Position* preferredPos = nullptr);
 	/// Resurrect units from streamer console
 	bool resurrectFactionByEvent();
 	/// Deploys the reinforcements, according to the alien reinforcements deployment rules.
-	bool deployReinforcements(const ReinforcementsData &wave);
+	bool deployReinforcements(const ReinforcementsData &wave, const Position* preferredPos = nullptr);
 	/// Adds a reinforcement unit to the game.
-	BattleUnit* addReinforcement(const ReinforcementsData& wave, Unit* rules, int alienRank, UnitFaction faction);
+	BattleUnit* addReinforcement(const ReinforcementsData& wave, Unit* rules, int alienRank, UnitFaction faction, const Position* preferredPos = nullptr);
 	/// Finds a spot near a friend to spawn at.
 	bool placeReinforcementNearFriend(BattleUnit *unit);
+	/// Places a unit on the position chosen by the player or on the nearest suitable cell around it.
+	bool placeReinforcementNearPosition(BattleUnit *unit, const Position& chosenPosition);
 public:
 	/// Creates the Next Turn state.
 	NextTurnState(SavedBattleGame *battleGame, BattlescapeState *state);
