@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -461,6 +461,7 @@
     <ClCompile Include="Battlescape\PsiAttackBState.cpp" />
     <ClCompile Include="Battlescape\ScannerState.cpp" />
     <ClCompile Include="Battlescape\ScannerView.cpp" />
+    <ClCompile Include="Battlescape\ShowUnitsBState.cpp" />
     <ClCompile Include="Battlescape\SkillMenuState.cpp" />
     <ClCompile Include="Battlescape\TurnDiaryState.cpp" />
     <ClCompile Include="Battlescape\UnitFallBState.cpp" />
@@ -945,6 +946,7 @@
     <ClInclude Include="Battlescape\PsiAttackBState.h" />
     <ClInclude Include="Battlescape\ScannerState.h" />
     <ClInclude Include="Battlescape\ScannerView.h" />
+    <ClInclude Include="Battlescape\ShowUnitsBState.h" />
     <ClInclude Include="Battlescape\SkillMenuState.h" />
     <ClInclude Include="Battlescape\TurnDiaryState.h" />
     <ClInclude Include="Battlescape\UnitFallBState.h" />

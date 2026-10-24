@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="main.cpp" />
@@ -474,6 +474,9 @@
       <Filter>Battlescape</Filter>
     </ClCompile>
     <ClCompile Include="Battlescape\ScannerView.cpp">
+      <Filter>Battlescape</Filter>
+    </ClCompile>
+    <ClCompile Include="Battlescape\ShowUnitsBState.cpp">
       <Filter>Battlescape</Filter>
     </ClCompile>
     <ClCompile Include="Battlescape\PromotionsState.cpp">
@@ -1734,6 +1737,9 @@
       <Filter>Battlescape</Filter>
     </ClInclude>
     <ClInclude Include="Battlescape\ScannerView.h">
+      <Filter>Battlescape</Filter>
+    </ClInclude>
+    <ClInclude Include="Battlescape\ShowUnitsBState.h">
       <Filter>Battlescape</Filter>
     </ClInclude>
     <ClInclude Include="Battlescape\PromotionsState.h">

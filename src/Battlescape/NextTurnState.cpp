@@ -49,6 +49,7 @@
 #include "Map.h"
 #include "TileEngine.h"
 #include "Pathfinding.h"
+#include "ShowUnitsBState.h"
 #include <fstream>
 #include <direct.h>
 
@@ -64,7 +65,7 @@ namespace OpenXcom
  * @param battleGame Pointer to the saved game.
  * @param state Pointer to the Battlescape state.
  */
-NextTurnState::NextTurnState(SavedBattleGame *battleGame, BattlescapeState *state) : _battleGame(battleGame), _state(state), _timer(0), _currentTurn(0), _showBriefing(false)
+NextTurnState::NextTurnState(SavedBattleGame *battleGame, BattlescapeState *state) : _battleGame(battleGame), _state(state), _timer(0), _currentTurn(0), _showBriefing(false), _cameraShowcase(false)
 {
 	if (_battleGame->isPreview())
 	{
@@ -574,7 +575,12 @@ void NextTurnState::close()
 	}
 	else
 	{
-		_state->btnCenterClick(0);
+		// when a camera showcase is pending, ShowUnitsBState::init() has already
+		// centered the camera on the first shown unit - don't override it here
+		if (!_cameraShowcase)
+		{
+			_state->btnCenterClick(0);
+		}
 
 		// Try to reactivate the touch buttons at the start of the player's turn
 		if (_battleGame->getSide() == FACTION_PLAYER)
@@ -1231,6 +1237,7 @@ bool NextTurnState::resurrectFactionByEvent()
 
 			statusManager->removeStatus("resurrect_faction");
 
+			std::vector<BattleUnit*> resurrected;
 			for (auto* bu : *_battleGame->getUnits())
 			{
 				if (bu->getOriginalFaction() == faction)
@@ -1268,9 +1275,35 @@ bool NextTurnState::resurrectFactionByEvent()
 								bu->setHealth(bu->getBaseStats()->health);
 								bu->updateUnitStats(true, false);
 								_battleGame->removeUnconsciousBodyItem(bu);
+								resurrected.push_back(bu);
 							}
 						}
 					}
+				}
+			}
+
+			// show the resurrected units to the player (only the ones he can see)
+			if (!resurrected.empty())
+			{
+				// FOV was recalculated in turnEnd() before the resurrection,
+				// so the resurrected units still have stale visibility flags.
+				_battleGame->getTileEngine()->recalculateFOV();
+
+				std::vector<Position> showcase;
+				for (auto* bu : resurrected)
+				{
+					if (!bu->isOut() && bu->getVisible())
+						showcase.push_back(bu->getPosition());
+				}
+				// don't lock the camera for too long on mass resurrections
+				const size_t maxShown = 5;
+				if (showcase.size() > maxShown)
+					showcase.resize(maxShown);
+				if (!showcase.empty())
+				{
+					_cameraShowcase = true;
+					BattlescapeGame *battle = _battleGame->getBattleGame();
+					battle->statePushNext(new ShowUnitsBState(battle, showcase));
 				}
 			}
 			return true;

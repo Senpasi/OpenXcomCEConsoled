@@ -69,6 +69,7 @@ private:
 	Surface *_bg;
 	int _currentTurn;
 	bool _showBriefing;
+	bool _cameraShowcase;
 	BriefingData _customBriefing;
 	std::vector< std::vector<int> > _compliantBlocksMap;
 	std::vector<Node*> _compliantNodesList;
