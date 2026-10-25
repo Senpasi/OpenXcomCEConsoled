@@ -54,7 +54,8 @@ std::string EventsList::processEvent(const std::string& yamlString)
 		"force_bug_hunt",
 		"soldier_transformation",
 		"soldier_message",
-		"resurrect_faction"
+		"resurrect_faction",
+		"airstrike"
 	};
 
 	if (eventId == "hi")

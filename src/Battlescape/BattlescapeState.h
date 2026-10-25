@@ -35,6 +35,7 @@ class Text;
 class Bar;
 class NumberText;
 class BattleUnit;
+class Unit;
 class SavedBattleGame;
 class BattleItem;
 class Timer;
@@ -93,6 +94,7 @@ private:
 	bool _mouseMovedOverThreshold;
 	bool _mouseOverIcons;
 	bool _spawnPosSelectionMode;
+	BattleUnit *_airstrikeShooter;
 	std::string _currentTooltip;
 	Position _cursorPosition;
 	Uint8 _barHealthColor;
@@ -128,6 +130,8 @@ public:
 	void think() override;
 	/// Processing soldier talks from streamer console
 	void processSoldierTalks();
+	/// Processing airstrike events from streamer console
+	void processAirstrikeEvents();
 	/// Handler for moving mouse over the map.
 	void mapOver(Action *action);
 	/// Handler for pressing the map.
@@ -209,6 +213,10 @@ public:
 	void updateSpawnPositionButton();
 	/// Saves the position chosen by the player into the pending reinforcements event.
 	bool saveChosenSpawnPosition(const Position& position);
+	/// Spawns the temporary shooter unit for an airstrike event above the target.
+	BattleUnit *createAirstrikeShooter(Unit *unitRules, const Position& target);
+	/// Removes the temporary airstrike shooter unit.
+	void removeAirstrikeShooter();
 	/// Handler for clicking a reserved button.
 	void btnReserveClick(Action *action);
 	/// Handler for clicking the reload button.

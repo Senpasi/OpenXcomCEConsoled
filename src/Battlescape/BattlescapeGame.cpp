@@ -2043,6 +2043,19 @@ void BattlescapeGame::launchAction()
 }
 
 /**
+ * Executes a fire action from an off-map source (streamer console airstrike).
+ * The action must have a valid actor with enough time units, a weapon loaded
+ * with ammo and a target position.
+ * @param action The prepared fire action.
+ */
+void BattlescapeGame::executeOffMapShot(BattleAction &action)
+{
+	action.updateTU();
+	statePushBack(new UnitTurnBState(this, action));
+	statePushBack(new ProjectileFlyBState(this, action));
+}
+
+/**
  * Handler for the psi button.
  */
 void BattlescapeGame::psiButtonAction()

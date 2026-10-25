@@ -33,6 +33,7 @@
 #include "AlienInventoryState.h"
 #include "Pathfinding.h"
 #include "BattlescapeGame.h"
+#include "ExplosionBState.h"
 #include "WarningMessage.h"
 #include "InfoboxState.h"
 #include "NoExperienceState.h"
@@ -102,7 +103,7 @@ BattlescapeState::BattlescapeState() :
 	_isMouseScrolling(false), _isMouseScrolled(false),
 	_xBeforeMouseScrolling(0), _yBeforeMouseScrolling(0),
 	_totalMouseMoveX(0), _totalMouseMoveY(0), _mouseMovedOverThreshold(0), _mouseOverIcons(false),
-	_spawnPosSelectionMode(false),
+	_spawnPosSelectionMode(false), _airstrikeShooter(0),
 	_autosave(0),
 	_numberOfDirectlyVisibleUnits(0), _numberOfEnemiesTotal(0), _numberOfEnemiesTotalPlusWounded(0)
 {
@@ -669,7 +670,7 @@ BattlescapeState::BattlescapeState() :
 	_btnSkills->onKeyboardPress((ActionHandler)&BattlescapeState::btnSkillsClick, Options::keyBattleUseSpecial);
 
 	_btnSpawnPosition->onMouseClick((ActionHandler)&BattlescapeState::btnSpawnPositionClick);
-	_btnSpawnPosition->setTooltip("Choose reinforcements spawn position");
+	_btnSpawnPosition->setTooltip("Choose target position for the event");
 	_btnSpawnPosition->onMouseIn((ActionHandler)&BattlescapeState::txtTooltipInSpawnPosition);
 	_btnSpawnPosition->onMouseOut((ActionHandler)&BattlescapeState::txtTooltipOut);
 
@@ -874,6 +875,12 @@ void BattlescapeState::think()
 	{
 		processSoldierTalks();
 		updateSpawnPositionButton();
+		processAirstrikeEvents();
+		if (_airstrikeShooter != 0 && !_battleGame->isBusy())
+		{
+			// the shot is finished - get rid of the temporary shooter unit
+			removeAirstrikeShooter();
+		}
 		if (_popups.empty())
 		{
 			State::think();
@@ -955,18 +962,26 @@ void BattlescapeState::processSoldierTalks()
 }
 
 /**
- * Finds the pending streamer console reinforcements event
- * for which the player can choose the spawn position.
+ * Finds the pending streamer console event
+ * for which the player can choose a map position.
  * @return Pointer to the status or 0.
  */
-static Status* findSpawnPositionStatus()
+static Status* findPositionChoiceStatus()
 {
 	StatusManager* statusManager = StatusManager::getInstance();
+	// airstrike events always need a player-chosen target position
+	auto airstrikes = statusManager->getStatusesByPrefix("airstrike");
+	for (const auto& entry : airstrikes)
+	{
+		Status* status = entry.second;
+		if (status && !status->isExpired() && !status->hasChosenPosition())
+			return status;
+	}
 	auto reinforcementEntries = statusManager->getStatusesByPrefix("reinforcement_");
 	for (const auto& entry : reinforcementEntries)
 	{
 		Status* status = entry.second;
-		if (!status || !status->hasData() || status->hasChosenPosition())
+		if (!status || status->isExpired() || !status->hasData() || status->hasChosenPosition())
 			continue;
 
 		bool canChoosePosition = false;
@@ -987,7 +1002,7 @@ void BattlescapeState::btnSpawnPositionClick(Action *)
 	if (!Options::oxcoConsoleEnabled)
 		return;
 
-	if (findSpawnPositionStatus() == nullptr)
+	if (findPositionChoiceStatus() == nullptr)
 	{
 		updateSpawnPositionButton();
 		return;
@@ -997,7 +1012,7 @@ void BattlescapeState::btnSpawnPositionClick(Action *)
 	if (_spawnPosSelectionMode)
 	{
 		_map->setCursorType(CT_SPAWN_POS);
-		warningLongRaw("Select the reinforcements spawn position with a left-click; right-click to cancel");
+		warningLongRaw("Select the target position with a left-click; right-click to cancel");
 	}
 	else
 	{
@@ -1010,7 +1025,7 @@ void BattlescapeState::btnSpawnPositionClick(Action *)
  */
 void BattlescapeState::updateSpawnPositionButton()
 {
-	const bool show = Options::oxcoConsoleEnabled && findSpawnPositionStatus() != nullptr;
+	const bool show = Options::oxcoConsoleEnabled && findPositionChoiceStatus() != nullptr;
 	if (!show && _spawnPosSelectionMode)
 	{
 		_spawnPosSelectionMode = false;
@@ -1035,12 +1050,211 @@ void BattlescapeState::updateSpawnPositionButton()
  */
 bool BattlescapeState::saveChosenSpawnPosition(const Position& position)
 {
-	Status* status = findSpawnPositionStatus();
+	Status* status = findPositionChoiceStatus();
 	if (!status)
 		return false;
 
 	status->setChosenPosition(position);
 	return true;
+}
+
+/**
+ * Executes pending airstrike events from the streamer console:
+ * a temporary shooter unit fires the configured weapon and ammo
+ * at the position chosen by the player.
+ */
+void BattlescapeState::processAirstrikeEvents()
+{
+	if (!Options::oxcoConsoleEnabled)
+		return;
+
+	StatusManager* statusManager = StatusManager::getInstance();
+	Status* airstrikeStatus = 0;
+	auto airstrikes = statusManager->getStatusesByPrefix("airstrike");
+	for (const auto& entry : airstrikes)
+	{
+		Status* status = entry.second;
+		if (status && !status->isExpired() && status->hasChosenPosition())
+		{
+			airstrikeStatus = status;
+			break;
+		}
+	}
+	if (!airstrikeStatus)
+		return;
+
+	// wait for a quiet moment in the player's turn: the shooter belongs to
+	// the player's side, so its shot is not treated as reaction fire
+	if (_save->getSide() != FACTION_PLAYER || _battleGame->isBusy() || _airstrikeShooter != 0)
+		return;
+
+	std::string weaponName, ammoName, shotName, shooterName;
+	const YAML::YamlRootNodeReader dataReader = airstrikeStatus->getReader();
+	dataReader.tryRead("weapon", weaponName);
+	dataReader.tryRead("ammo", ammoName);
+	dataReader.tryRead("shot", shotName);
+	dataReader.tryRead("shooter_unit", shooterName);
+	const Position target = airstrikeStatus->getChosenPosition();
+
+	// consume the event in any case, so it is never executed twice
+	if (CounterBasedStatus *counter = dynamic_cast<CounterBasedStatus*>(airstrikeStatus))
+		counter->decrementCount();
+	else
+		statusManager->removeStatus("airstrike");
+
+	RuleItem *weaponRule = weaponName.empty() ? 0 : _game->getMod()->getItem(weaponName, false);
+	RuleItem *ammoRule = ammoName.empty() ? 0 : _game->getMod()->getItem(ammoName, false);
+	if (!weaponRule || !ammoRule)
+	{
+		warningLongRaw("Airstrike failed: unknown weapon or ammo item");
+		return;
+	}
+
+	BattleActionType shotType = BA_SNAPSHOT;
+	if (shotName == "burst")
+		shotType = BA_AUTOSHOT;
+	else if (shotName == "aimed")
+		shotType = BA_AIMEDSHOT;
+
+	// the engine does not stop a downward projectile at a floor plate, so
+	// aim at the covering roof/ceiling ourselves: find the highest floor
+	// (the outer roof) in the column above the chosen position
+	Position impact = target;
+	for (int z = target.z + 1; z < _save->getMapSizeZ(); ++z)
+	{
+		Tile *t = _save->getTile(Position(target.x, target.y, z));
+		if (t && t->getMapData(O_FLOOR) != 0 && !t->hasNoFloor(_save))
+			impact = Position(target.x, target.y, z);
+	}
+
+	Unit *unitRules = shooterName.empty() ? 0 : _game->getMod()->getUnit(shooterName, false);
+	BattleUnit *shooter = unitRules ? createAirstrikeShooter(unitRules, impact) : 0;
+	if (shooter)
+		_airstrikeShooter = shooter;
+
+	if (shooter)
+	{
+		// the weapon and the ammo are given "as is", bypassing the usability checks
+		BattleItem *weaponItem = _save->createItemForUnitSpecialBuiltin(weaponRule, shooter);
+		BattleItem *ammoItem = _save->createItemForUnitSpecialBuiltin(ammoRule, shooter);
+		if (!weaponItem || !ammoItem || !weaponItem->setAmmoPreMission(ammoItem)
+			|| !weaponItem->getAmmoForAction(shotType))
+		{
+			removeAirstrikeShooter();
+			warningLongRaw("Airstrike failed: cannot load the ammo into the weapon");
+			return;
+		}
+
+		BattleAction action;
+		action.type = shotType;
+		action.actor = shooter;
+		action.weapon = weaponItem;
+		action.target = impact;
+		_battleGame->executeOffMapShot(action);
+		warningLongRaw("Airstrike incoming!");
+	}
+	else
+	{
+		// no shooter unit - the ammo explodes directly at the impact position
+		Tile *tile = _save->getTile(impact);
+		if (!tile)
+		{
+			warningLongRaw("Airstrike failed: invalid target position");
+			return;
+		}
+		BattleActionAttack attack;
+		attack.type = shotType;
+		attack.damage_item = _save->createItemForTile(ammoRule, tile);
+		_battleGame->statePushBack(new ExplosionBState(_battleGame, impact.toVoxel(), attack));
+		warningLongRaw("Airstrike incoming!");
+	}
+}
+
+/**
+ * Spawns the temporary shooter unit for an airstrike event.
+ * The unit is placed above the target position (or near the target,
+ * when there is no place above it). It is created as a summoned player
+ * unit, so it is ignored by the battle tally and removed at the end
+ * of the battle.
+ * @param unitRules Rules of the shooter unit.
+ * @param target The impact position of the airstrike (the chosen position
+ * or the covering roof above it).
+ * @return Pointer to the new unit or 0.
+ */
+BattleUnit *BattlescapeState::createAirstrikeShooter(Unit *unitRules, const Position& target)
+{
+	// the shooter must belong to the player's side, otherwise the engine
+	// treats its shot as reaction fire and cancels it
+	BattleUnit *shooter = _save->createTempUnit(unitRules, FACTION_PLAYER);
+	shooter->setTimeUnits(255);
+
+	bool placed = false;
+	for (int z = _save->getMapSizeZ() - 1; z > target.z && !placed; --z)
+	{
+		Position candidate(target.x, target.y, z);
+		if (_save->getTile(candidate) != 0 && _save->setUnitPosition(shooter, candidate))
+			placed = true;
+	}
+	if (!placed)
+	{
+		// the target is on the top level or the column above it is blocked,
+		// place the shooter near the target instead
+		placed = _save->placeUnitNearPosition(shooter, target, false);
+	}
+	if (!placed)
+	{
+		delete shooter;
+		return 0;
+	}
+
+	_save->getUnits()->push_back(shooter);
+	_save->getTileEngine()->recalculateFOV();
+	return shooter;
+}
+
+/**
+ * Removes the temporary airstrike shooter unit and all its items.
+ */
+void BattlescapeState::removeAirstrikeShooter()
+{
+	if (_airstrikeShooter == 0)
+		return;
+
+	BattleUnit *shooter = _airstrikeShooter;
+	_airstrikeShooter = 0;
+
+	if (shooter->getStatus() == STATUS_UNCONSCIOUS || shooter->getStatus() == STATUS_DEAD)
+		_save->removeUnconsciousBodyItem(shooter);
+
+	// remove the weapon and the ammo given to the shooter;
+	// "special" items have to lose their owner before removeItem() accepts them
+	std::vector<BattleItem*> ownedItems;
+	for (BattleItem *item : *_save->getItems())
+	{
+		if (item->getOwner() == shooter)
+			ownedItems.push_back(item);
+	}
+	for (BattleItem *item : ownedItems)
+	{
+		std::vector<BattleItem*> &items = *_save->getItems();
+		if (std::find(items.begin(), items.end(), item) == items.end())
+			continue; // already removed together with the weapon it was loaded in
+		item->setOwner(0);
+		_save->removeItem(item);
+	}
+
+	shooter->setTile(0, _save);
+	_save->clearUnitSelection(shooter);
+
+	std::vector<BattleUnit*> &units = *_save->getUnits();
+	std::vector<BattleUnit*>::iterator it = std::find(units.begin(), units.end(), shooter);
+	if (it != units.end())
+	{
+		units.erase(it);
+	}
+	delete shooter;
+
+	_save->getTileEngine()->recalculateFOV();
 }
 
 /**
@@ -1251,7 +1465,7 @@ void BattlescapeState::mapClick(Action *action)
 		{
 			_spawnPosSelectionMode = false;
 			_battleGame->setupCursor();
-			warningRaw("Spawn position selection canceled");
+			warningRaw("Position selection canceled");
 			return;
 		}
 		if (_game->isLeftClick(action, true) && !_mouseOverIcons
@@ -1264,7 +1478,7 @@ void BattlescapeState::mapClick(Action *action)
 				_spawnPosSelectionMode = false;
 				_battleGame->setupCursor();
 				std::ostringstream ss;
-				ss << "Reinforcements will spawn near " << pos;
+				ss << "Target position chosen: " << pos;
 				warningLongRaw(ss.str());
 			}
 		}

@@ -229,6 +229,8 @@ private:
 	void secondaryAction(Position pos);
 	/// Handler for the blaster launcher button.
 	void launchAction();
+	/// Executes a fire action from an off-map source (streamer console airstrike).
+	void executeOffMapShot(BattleAction &action);
 	/// Handler for the psi button.
 	void psiButtonAction();
 	/// Handle psi attack result message.
