@@ -996,7 +996,12 @@ void BattlescapeState::btnSpawnPositionClick(Action *)
 	_spawnPosSelectionMode = !_spawnPosSelectionMode;
 	if (_spawnPosSelectionMode)
 	{
+		_map->setCursorType(CT_SPAWN_POS);
 		warningLongRaw("Select the reinforcements spawn position with a left-click; right-click to cancel");
+	}
+	else
+	{
+		_battleGame->setupCursor();
 	}
 }
 
@@ -1006,9 +1011,21 @@ void BattlescapeState::btnSpawnPositionClick(Action *)
 void BattlescapeState::updateSpawnPositionButton()
 {
 	const bool show = Options::oxcoConsoleEnabled && findSpawnPositionStatus() != nullptr;
-	if (!show)
+	if (!show && _spawnPosSelectionMode)
+	{
 		_spawnPosSelectionMode = false;
+		_battleGame->setupCursor();
+	}
+	// weapon aiming takes priority over the spawn position selection
+	if (_spawnPosSelectionMode && _battleGame->getCurrentAction()->targeting)
+	{
+		_spawnPosSelectionMode = false;
+	}
 	_btnSpawnPosition->setVisible(show);
+	// the battle logic resets the cursor type (unit selection, mouse over icons, etc.),
+	// so re-assert our special cursor while the selection mode is active
+	if (_spawnPosSelectionMode && _map->getCursorType() != CT_SPAWN_POS)
+		_map->setCursorType(CT_SPAWN_POS);
 }
 
 /**
@@ -1233,6 +1250,7 @@ void BattlescapeState::mapClick(Action *action)
 		if (_game->isRightClick(action))
 		{
 			_spawnPosSelectionMode = false;
+			_battleGame->setupCursor();
 			warningRaw("Spawn position selection canceled");
 			return;
 		}
@@ -1244,6 +1262,7 @@ void BattlescapeState::mapClick(Action *action)
 			if (_save->getTile(pos) != 0 && saveChosenSpawnPosition(pos))
 			{
 				_spawnPosSelectionMode = false;
+				_battleGame->setupCursor();
 				std::ostringstream ss;
 				ss << "Reinforcements will spawn near " << pos;
 				warningLongRaw(ss.str());

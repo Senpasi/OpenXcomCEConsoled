@@ -1494,7 +1494,8 @@ void Map::drawTerrain(Surface *surface)
 							Surface::blitRaw(surface, tmpSurface, screenPosition.x, screenPosition.y, 0);
 
 							// UFO extender accuracy: display adjusted accuracy value on crosshair in real-time.
-							if (_cursorType >= CT_AIM && _showInfoOnCursor && (_cursorType != CT_THROW || !Options::oxceDisableInfoOnThrowCursor))
+							// CT_SPAWN_POS has no active action/weapon, so it must be excluded here.
+							if (_cursorType >= CT_AIM && _cursorType != CT_SPAWN_POS && _showInfoOnCursor && (_cursorType != CT_THROW || !Options::oxceDisableInfoOnThrowCursor))
 							{
 								BattleAction *action = _save->getBattleGame()->getCurrentAction();
 								const RuleItem *weapon = action->weapon->getRules();
@@ -1711,7 +1712,7 @@ void Map::drawTerrain(Surface *surface)
 							}
 							if (!ignore)
 							{
-								int frame[6] = { 0, 0, 0, 11, 13, 15 };
+								int frame[7] = { 0, 0, 0, 11, 13, 15, 15 }; // CT_SPAWN_POS reuses the animated throw crosshair
 								tmpSurface = _game->getMod()->getSurfaceSet("CURSOR.PCK")->getFrame(frame[_cursorType] + (_animFrame / 4) % 2);
 								Surface::blitRaw(surface, tmpSurface, screenPosition.x, screenPosition.y, 0);
 							}
